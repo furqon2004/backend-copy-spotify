@@ -54,6 +54,39 @@ return response()->json([
 });
 }
 
+public function register(Request $request): JsonResponse
+{
+    $request->validate([
+        'username' => 'required|string|max:255|unique:users',
+        'email' => 'required|string|email|max:255|unique:users',
+        'password' => 'required|string|min:8|confirmed',
+    ]);
+
+    return DB::transaction(function () use ($request) {
+        $user = User::create([
+            'username' => $request->username,
+            'email' => $request->email,
+            'password_hash' => Hash::make($request->password),
+        ]);
+
+        $expiration = $this->getExpirationByRole($user);
+        $accessToken = $user->createToken('access_token', ['*'], $expiration)->plainTextToken;
+        $refreshToken = $user->createToken('refresh_token', ['issue-access-token'], now()->addMonths(6))->plainTextToken;
+
+        return response()->json([
+            'access_token' => $accessToken,
+            'refresh_token' => $refreshToken,
+            'token_type' => 'Bearer',
+            'expires_at' => $expiration->toDateTimeString(),
+            'user' => [
+                'id' => $user->id,
+                'username' => $user->username,
+                'email' => $user->email,
+            ]
+        ], 201);
+    });
+}
+
 public function refresh(Request $request): JsonResponse
     {
         $user = $request->user();
