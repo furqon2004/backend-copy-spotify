@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\Artist\DashboardController as ArtistDashboard;
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/artist/register', [ArtistController::class, 'store']);
 
 Route::middleware('auth:sanctum')->group(function () {
 
