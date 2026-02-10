@@ -7,17 +7,17 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        Schema::create('artists', function (Blueprint $table) {
-            $table->uuid('id')->primary();
-            $table->foreignUuid('user_id')->nullable()->unique()->constrained('users')->nullOnDelete();
-            $table->string('name')->index();
-            $table->string('slug')->unique();
-            $table->text('bio')->nullable();
-            $table->string('avatar_url')->nullable();
-            $table->unsignedBigInteger('monthly_listeners')->default(0)->index();
-            $table->boolean('is_verified')->default(false)->index();
-            $table->timestamps();
-        });
+       Schema::create('artists', function (Blueprint $table) {
+    $table->uuid('id')->primary();
+    $table->foreignUuid('user_id')->constrained('users')->onDelete('cascade');
+    $table->string('name');
+    $table->string('slug')->unique();
+    $table->text('bio')->nullable();
+    $table->string('avatar_url')->nullable();
+    $table->unsignedBigInteger('monthly_listeners')->default(0);
+    $table->boolean('is_verified')->default(false);
+    $table->timestamps();
+});
     }
 
     public function down(): void
