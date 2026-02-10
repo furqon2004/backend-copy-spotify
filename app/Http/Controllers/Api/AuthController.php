@@ -55,28 +55,26 @@ return response()->json([
 }
 
 public function refresh(Request $request): JsonResponse
-{
-$user = $request->user();
+    {
+        $user = $request->user();
 
-// Keamanan: Cek apakah token yang dipakai memang punya hak untuk refresh
-if (!$user->tokenCan('issue-access-token')) {
-return response()->json(['message' => 'Unauthorized refresh attempt'], 403);
-}
+        if (!$user->tokenCan('issue-access-token')) {
+            return response()->json(['message' => 'Invalid refresh token'], 403);
+        }
 
-return DB::transaction(function () use ($user) {
-// Hapus access token lama yang sudah expired
-$user->tokens()->where('name', 'access_token')->delete();
+        return DB::transaction(function () use ($user) {
+            $user->tokens()->where('name', 'access_token')->delete();
 
-$expiration = $this->getExpirationByRole($user);
-$newAccessToken = $user->createToken('access_token', ['*'], $expiration)->plainTextToken;
+            $expiration = $this->getExpirationByRole($user);
+            $newAccessToken = $user->createToken('access_token', ['*'], $expiration)->plainTextToken;
 
-return response()->json([
-'access_token' => $newAccessToken,
-'token_type' => 'Bearer',
-'expires_at' => $expiration->toDateTimeString(),
-]);
-});
-}
+            return response()->json([
+                'access_token' => $newAccessToken,
+                'token_type' => 'Bearer',
+                'expires_at' => $expiration->toDateTimeString(),
+            ]);
+        });
+    }
 
 public function logout(Request $request): JsonResponse
 {
@@ -87,18 +85,12 @@ return response()->json(['message' => 'Logged out successfully']);
 /**
 * Helper: Menentukan durasi token berdasarkan Role
 */
-private function getExpirationByRole($user): Carbon
-{
-if ($user->admin) {
-return now()->addDay(); // Admin: 1 Hari
-}
-
-if ($user->artist) {
-return now()->addMonth(); // Artist: 1 Bulan
-}
-
-return now()->addMonths(2); // User: 2 Bulan
-}
+private function getExpirationByRole($user)
+    {
+        if ($user->admin) return now()->addDay();
+        if ($user->artist) return now()->addMonth();
+        return now()->addMonths(2);
+    }
 
 /**
 * Helper: Mengambil label role user

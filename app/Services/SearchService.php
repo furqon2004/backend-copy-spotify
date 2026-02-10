@@ -1,79 +1,54 @@
-<?php
+<?php 
 namespace App\Services;
 
 use App\Models\Song;
-use App\Models\Playlist;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Cache;
 
 class SearchService
 {
-    public function __construct()
+    public function searchWithAI(string $prompt)
     {
-    }
+        $cacheKey = 'ai_search_' . md5(strtolower(trim($prompt)));
 
-    public function semanticSearch(string $prompt)
-    {
-        $embedding = $this->generateEmbedding($prompt);
-
-        $songIds = $this->queryVectorDatabase($embedding);
-
-        return Song::whereIn('id', $songIds)
-            ->with(['artist:id,name', 'album:id,title,cover_image_url'])
-            ->get();
-    }
-
-    public function generatePlaylistFromPrompt(string $userId, string $prompt)
-    {
-        $aiResponse = Http::withToken(config('services.openai.key'))
-            ->post('https://api.openai.com/v1/chat/completions', [
-                'model' => 'gpt-4o-mini',
-                'messages' => [
-                    ['role' => 'system', 'content' => 'You are a music expert. Return only JSON with: title, description, and filter_criteria (mood, genre, min_bpm).'],
-                    ['role' => 'user', 'content' => "Create a playlist based on this vibe: $prompt"]
+        return Cache::remember($cacheKey, now()->addHours(24), function () use ($prompt) {
+            $response = Http::withHeaders([
+                'Content-Type' => 'application/json',
+            ])->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" . config('services.gemini.key'), [
+                'contents' => [
+                    ['parts' => [['text' => $this->buildPrompt($prompt)]]]
                 ],
-                'response_format' => ['type' => 'json_object']
-            ])->json();
-
-        $criteria = json_decode($aiResponse['choices'][0]['message']['content'], true);
-
-        $songs = Song::whereHas('aiMetadata', function ($query) use ($criteria) {
-            $query->whereIn('mood_tags', $criteria['filter_criteria']['mood'] ?? [])
-                ->orWhere('bpm', '>=', $criteria['filter_criteria']['min_bpm'] ?? 0);
-        })->limit(20)->pluck('id');
-
-        $playlist = Playlist::create([
-            'user_id' => $userId,
-            'name' => $criteria['title'],
-            'description' => $criteria['description'],
-            'is_ai_generated' => true,
-            'ai_prompt_used' => $prompt
-        ]);
-
-        $playlist->songs()->attach($songs);
-
-        return $playlist;
-    }
-
-    private function generateEmbedding(string $text)
-    {
-        $response = Http::withToken(config('services.openai.key'))
-            ->post('https://api.openai.com/v1/embeddings', [
-                'model' => 'text-embedding-3-small',
-                'input' => $text
+                'generationConfig' => [
+                    'response_mime_type' => 'application/json',
+                ]
             ]);
 
-        return $response->json()['data'][0]['embedding'];
+            if ($response->failed()) {
+                return collect();
+            }
+
+            $data = json_decode($response->json()['candidates'][0]['content']['parts'][0]['text'], true);
+
+            return Song::query()
+                ->when(!empty($data['genres']), function ($q) use ($data) {
+                    $q->whereHas('genres', fn($query) => $query->whereIn('name', $data['genres']));
+                })
+                ->when(!empty($data['moods']), function ($q) use ($data) {
+                    $q->whereHas('aiMetadata', fn($query) => $query->whereJsonContains('mood_tags', $data['moods']));
+                })
+                ->when(isset($data['min_bpm']), function ($q) use ($data) {
+                    $q->whereHas('aiMetadata', fn($query) => $query->where('bpm', '>=', $data['min_bpm']));
+                })
+                ->with(['artist', 'album'])
+                ->limit(15)
+                ->get();
+        });
     }
 
-    private function queryVectorDatabase(array $embedding)
+    private function buildPrompt(string $userQuery): string
     {
-        $response = Http::withToken(config('services.qdrant.key'))
-            ->post(config('services.qdrant.url') . '/collections/songs/points/search', [
-                'vector' => $embedding,
-                'limit' => 15,
-                'with_payload' => true
-            ]);
-
-        return collect($response->json()['result'])->pluck('id')->toArray();
+        return "Analyze this music search query: '$userQuery'. 
+        Extract as JSON: {'genres': [], 'moods': [], 'min_bpm': int/null}. 
+        Return ONLY valid JSON.";
     }
 }
