@@ -42,8 +42,12 @@ class SearchController extends Controller
             $request->prompt
         );
 
+        if (!$playlist) {
+            return response()->json(['message' => 'Could not find enough songs for this prompt'], 404);
+        }
+
         return response()->json([
-            'message' => 'AI has curated your playlist!',
+            'message' => 'AI has curated your playlist with ' . $playlist->songs->count() . ' songs!',
             'data' => $playlist
         ], 201);
     }
