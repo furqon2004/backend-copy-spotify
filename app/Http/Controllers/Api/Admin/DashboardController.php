@@ -12,14 +12,24 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        return response()->json([
-            'stats' => [
-                'users_count' => User::count(),
-                'artists_count' => Artist::count(),
-                'total_streams' => Song::sum('stream_count'),
-                'active_sessions' => DB::table('sessions')->count(),
-            ],
-            'latest_reports' => DB::table('content_reports')->latest()->limit(5)->get()
-        ]);
+        try {
+            return response()->json([
+                'stats' => [
+                    'users_count' => User::count(),
+                    'artists_count' => Artist::count(),
+                    'total_streams' => Song::sum('stream_count'),
+                    'active_sessions' => DB::table('sessions')->count(),
+                ],
+                'latest_reports' => DB::table('content_reports')
+                    ->latest('created_at')
+                    ->limit(5)
+                    ->get()
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to load dashboard',
+                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
+            ], 500);
+        }
     }
 }

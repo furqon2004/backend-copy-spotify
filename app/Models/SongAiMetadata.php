@@ -7,30 +7,19 @@ use Illuminate\Database\Eloquent\Model;
 class SongAiMetadata extends Model
 {
     protected $table = 'song_ai_metadata';
-    protected $primaryKey = 'song_id';
-    public $incrementing = false;
-    protected $keyType = 'string';
-    public $timestamps = false;
 
     protected $fillable = [
         'song_id',
-        'vector_id',
+        'mood_tags',
         'bpm',
         'key_signature',
-        'mood_tags',
-        'danceability',
-        'energy',
-        'valence',
-        'last_analyzed_at'
+        'energy_score',
     ];
 
     protected $casts = [
         'mood_tags' => 'array',
-        'last_analyzed_at' => 'datetime',
-        'bpm' => 'float',
-        'danceability' => 'float',
-        'energy' => 'float',
-        'valence' => 'float'
+        'bpm' => 'integer',
+        'energy_score' => 'float',
     ];
 
     public function song()

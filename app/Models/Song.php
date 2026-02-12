@@ -14,11 +14,13 @@ class Song extends Model
         'album_id',
         'artist_id',
         'title',
-        'duration_ms',
-        'file_url',
-        'track_number',
+        'slug',
+        'cover_url',
+        'file_path',
+        'file_size',
+        'duration_seconds',
         'stream_count',
-        'lyrics'
+        'is_explicit'
     ];
 
     public function album()

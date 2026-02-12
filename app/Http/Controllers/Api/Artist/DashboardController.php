@@ -10,11 +10,17 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        $artistId = auth()->user()->artist->id;
+        $artist = auth()->user()->artist;
+
+        if (!$artist) {
+            return response()->json(['message' => 'You are not registered as an artist'], 403);
+        }
+
+        $artistId = $artist->id;
 
         return response()->json([
             'stats' => [
-                'monthly_listeners' => auth()->user()->artist->monthly_listeners,
+                'monthly_listeners' => $artist->monthly_listeners,
                 'total_plays' => DB::table('songs')->where('artist_id', $artistId)->sum('stream_count'),
             ],
             'performance_chart' => StreamHistory::whereIn('song_id', function ($query) use ($artistId) {

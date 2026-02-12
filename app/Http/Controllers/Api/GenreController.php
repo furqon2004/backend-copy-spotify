@@ -16,7 +16,7 @@ class GenreController extends Controller
     {
         return Genre::where('slug', $slug)->firstOrFail()
             ->songs()
-            ->select(['songs.id', 'songs.title', 'songs.file_url', 'songs.artist_id'])
+            ->select(['songs.id', 'songs.title', 'songs.file_path', 'songs.cover_url', 'songs.artist_id'])
             ->with('artist:id,name')
             ->paginate(30);
     }

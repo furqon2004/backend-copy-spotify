@@ -68,7 +68,7 @@ class SongRepository implements EloquentRepositoryInterface
 
     public function streamLargeDataset()
     {
-        return $this->model->select(['id', 'title', 'file_url'])
+        return $this->model->select(['id', 'title', 'file_path'])
             ->lazy(500);
     }
 }
