@@ -51,4 +51,10 @@ class SongController extends Controller
         $this->songService->deleteSong($id, auth()->user()->artist->id);
         return response()->json(null, 204);
     }
+
+    public function popular(): JsonResponse
+    {
+        $songs = $this->songRepo->getPopularSongs(10);
+        return response()->json($songs);
+    }
 }

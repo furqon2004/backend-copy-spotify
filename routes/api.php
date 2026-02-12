@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\PodcastController;
 use App\Http\Controllers\Api\GenreController;
 use App\Http\Controllers\Api\SearchController;
 use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Api\HomepageController;
 use App\Http\Controllers\Api\Admin\DashboardController as AdminDashboard;
 use App\Http\Controllers\Api\Artist\DashboardController as ArtistDashboard;
 
@@ -18,10 +19,15 @@ Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/artist/register', [ArtistController::class, 'store']);
 
+// Public endpoints (no auth required) — songs visible but not playable
+Route::get('/browse', [HomepageController::class, 'browse']);
+
 Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('/refresh', [AuthController::class, 'refresh'])->name('auth.refresh');
     Route::post('/logout', [AuthController::class, 'logout']);
+
+    Route::get('/feed', [HomepageController::class, 'feed']);
 
     Route::prefix('profile')->group(function () {
         Route::get('/', [ProfileController::class, 'show']);
