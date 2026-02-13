@@ -14,7 +14,7 @@ return new class extends Migration {
             $table->timestamp('played_at')->useCurrent();
             $table->unsignedInteger('duration_played_ms');
             $table->enum('source', ['PLAYLIST', 'SEARCH', 'AI_RECOMMENDATION'])->index();
-            $table->string('device', 100)->nullable();
+            $table->string('device', 255)->nullable();
 
             $table->index(['user_id', 'played_at']);
             $table->index('song_id');

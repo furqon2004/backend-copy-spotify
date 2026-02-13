@@ -7,6 +7,7 @@ use App\Models\Song;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class StreamController extends Controller
 {
@@ -24,7 +25,7 @@ class StreamController extends Controller
                 'song_id' => $request->song_id,
                 'duration_played_ms' => $request->duration_played_ms,
                 'source' => $request->source,
-                'device' => $request->header('User-Agent'),
+                'device' => Str::limit($request->header('User-Agent'), 255, ''),
                 'played_at' => now()
             ]);
 
