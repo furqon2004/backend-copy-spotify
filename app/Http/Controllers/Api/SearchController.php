@@ -37,6 +37,23 @@ class SearchController extends Controller
     {
         $request->validate(['prompt' => 'required|string|min:3']);
 
+        // Validate prompt dengan AI
+        $validation = $this->searchService->validatePrompt($request->prompt);
+
+        if (!$validation['valid']) {
+            return response()->json([
+                'message' => 'Prompt tidak valid untuk generate playlist',
+                'error' => $validation['reason'] ?? 'Prompt terlalu vague atau tidak berhubungan dengan musik',
+                'examples' => $validation['examples'] ?? [
+                    'lagu upbeat untuk workout',
+                    'lagu sad romantic untuk patah hati',
+                    'lagu chill jazz untuk belajar',
+                    'EDM energik untuk party'
+                ],
+                'suggestion' => 'Gunakan prompt yang lebih spesifik dan berhubungan dengan musik'
+            ], 422);
+        }
+
         $playlist = $this->searchService->generatePlaylistFromPrompt(
             auth()->id(), 
             $request->prompt

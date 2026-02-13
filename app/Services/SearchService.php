@@ -116,4 +116,56 @@ class SearchService
         Extract as JSON: {'genres': [], 'moods': []}. 
         Return ONLY JSON.";
     }
+
+    public function validatePrompt(string $prompt): array
+    {
+        try {
+            $response = Http::timeout(10)->withHeaders(['Content-Type' => 'application/json'])
+                ->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" . config('services.gemini.key'), [
+                    'contents' => [['parts' => [['text' => $this->buildValidationPrompt($prompt)]]]],
+                    'generationConfig' => ['response_mime_type' => 'application/json']
+                ]);
+
+            if ($response->failed()) {
+                return ['valid' => true]; // Jika AI gagal, izinkan request
+            }
+
+            $json = $response->json();
+            $text = $json['candidates'][0]['content']['parts'][0]['text'] ?? null;
+            
+            if (!$text) {
+                return ['valid' => true];
+            }
+
+            $data = json_decode($text, true);
+            return $data ?? ['valid' => true];
+        } catch (\Exception $e) {
+            Log::warning('Prompt validation failed: ' . $e->getMessage());
+            return ['valid' => true]; // Jika error, izinkan request
+        }
+    }
+
+    private function buildValidationPrompt(string $query): string
+    {
+        return "Analyze if this prompt is valid for music playlist generation: '$query'
+
+Valid prompts are:
+- Music-related (songs, playlists, genres, moods)
+- Specific enough (describes mood, genre, activity, or vibe)
+- Examples: 'upbeat workout songs', 'sad romantic ballads', 'chill jazz for studying'
+
+Invalid prompts are:
+- Too vague: 'music', 'songs', 'good'
+- Off-topic: 'how to cook', 'weather', 'programming tips'
+- Nonsensical: 'asdfgh', random characters
+
+Return JSON with this structure:
+{
+  \"valid\": true/false,
+  \"reason\": \"brief explanation why it's invalid (empty if valid)\",
+  \"examples\": [\"example 1\", \"example 2\", \"example 3\"] (only if invalid, suggest 3 similar valid prompts)
+}
+
+Return ONLY JSON.";
+    }
 }
