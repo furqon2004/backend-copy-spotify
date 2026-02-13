@@ -2,12 +2,12 @@
 namespace App\Repositories;
 
 use App\Models\Song;
-use App\Repositories\Interfaces\EloquentRepositoryInterface;
+use App\Repositories\Interfaces\SongRepositoryInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 
-class SongRepository implements EloquentRepositoryInterface
+class SongRepository implements SongRepositoryInterface
 {
     protected $model;
 
@@ -21,7 +21,7 @@ class SongRepository implements EloquentRepositoryInterface
         return $this->model->select($columns)->with($relations)->find($id);
     }
 
-    public function findOwnedByArtist(string $id, string $artistId): ?Song
+    public function findOwnedByArtist(string $id, string $artistId): Song
     {
         return $this->model->where('id', $id)->where('artist_id', $artistId)->firstOrFail();
     }
@@ -39,7 +39,7 @@ class SongRepository implements EloquentRepositoryInterface
             ->paginate($perPage);
     }
 
-    public function create(array $data): Model
+    public function create(array $data): Song
     {
         return $this->model->create($data);
     }
