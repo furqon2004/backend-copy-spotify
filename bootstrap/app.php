@@ -1,9 +1,11 @@
 <?php
 
+use App\Http\Middleware\ForceJsonResponse;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
-use Illuminate\Console\Scheduling\Schedule; // Pastikan import ini ada
+use Illuminate\Console\Scheduling\Schedule;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -13,12 +15,16 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        // Tempat mendaftarkan middleware global atau alias
+        $middleware->api(prepend: [
+            ForceJsonResponse::class,
+        ]);
     })
     ->withSchedule(function (Schedule $schedule) {
         // Menjalankan pembersihan token Sanctum yang expired setiap jam
         $schedule->command('sanctum:prune-expired --hours=24')->hourly();
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        // Tempat penanganan exception kustom
+        $exceptions->render(function (AuthenticationException $e, $request) {
+            return response()->json(['message' => 'Unauthenticated.'], 401);
+        });
     })->create();

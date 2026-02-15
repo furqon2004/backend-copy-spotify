@@ -6,6 +6,7 @@ use App\Models\Album;
 use App\Models\Artist;
 use App\Models\ContentReport;
 use App\Models\Genre;
+use App\Models\Lyric;
 use App\Models\Playlist;
 use App\Models\PlaylistItem;
 use App\Models\Podcast;
@@ -294,7 +295,105 @@ class DatabaseSeeder extends Seeder
         }
 
         // ──────────────────────────────────────────────
-        // 8. Playlists (3 playlist)
+        // 8. Lyrics (setiap lagu punya lirik)
+        // ──────────────────────────────────────────────
+        $lyricsData = [
+            // Tulus — Monokrom
+            'Monokrom' => "Kita pernah bersama\nMelihat dunia dalam monokrom\nTak ada warna yang tersisa\nHanya hitam dan putih di antara kita",
+            'Pamit' => "Izinkan aku untuk pamit\nBukan karena tak cinta\nAku hanya ingin sendiri\nMelepas semua yang ada",
+            'Langit Abu-Abu' => "Langit abu-abu menaungi hati\nHujan turun membasahi bumi\nAku berdiri di sini sendiri\nMenunggu pelangi di ujung hari",
+            'Ruang Sendiri' => "Biarkan aku di ruang sendiri\nMencari arti dari semua ini\nDi antara sunyi dan sepi\nAku menemukan diri",
+            // Tulus — Manusia
+            'Hati-Hati di Jalan' => "Hati-hati di jalan\nSemoga kau temukan yang kau cari\nAku di sini menunggu\nMeski tahu kau takkan kembali",
+            'Interaksi' => "Setiap interaksi punya makna\nKata yang tak terucap pun berbicara\nDi antara kita ada jarak\nYang tak bisa dijembatani",
+            'Diri' => "Aku belajar mengenal diri\nDi setiap langkah yang ku jalani\nTak sempurna namun tetap berjalan\nMencari makna kehidupan",
+            // Pamungkas — Walk The Talk
+            'To The Bone' => "I want you to the bone\nI want you all alone\nIn the middle of the night\nWhen there's no one in sight",
+            "I Love You But I'm Letting Go" => "I love you but I'm letting go\nIt doesn't mean my heart won't ache\nThis is the hardest thing I know\nBut sometimes love means giving space",
+            'One Only' => "You are the one only\nThe one that I need\nIn this world so lonely\nYou're all that I see",
+            'Sorry' => "I'm sorry for the words I said\nI'm sorry for the tears you shed\nIf I could turn back time\nI'd make everything fine",
+            // Pamungkas — Solipsism
+            'Closure' => "Give me closure, give me peace\nLet me know that this will cease\nAll the wondering inside\nNeeds an answer, needs a guide",
+            'Be Alright' => "Everything will be alright\nEven when the stars aren't bright\nWe will find our way through\nI believe in me and you",
+            'Rider' => "Ride through the storm\nBreak through the norm\nNothing can stop us now\nWe'll figure it out somehow",
+            // Hindia — Menari Dengan Bayangan
+            'Secukupnya' => "Secukupnya saja kita\nTak perlu berlebihan\nCinta yang sederhana\nLebih dari cukup untukku",
+            'Evaluasi' => "Mari kita evaluasi\nApa yang sudah kita lewati\nJangan sampai kita lupa\nMakna dari semua cerita",
+            'Membasuh' => "Hujan membasuh luka lama\nMembawa pergi semua duka\nAku berdiri di bawah langit\nMembiarkan air menyembuhkan",
+            'Rumah Ke Rumah' => "Dari rumah ke rumah aku berjalan\nMencari tempat yang bisa kupanggil pulang\nDi setiap langkah ada kenangan\nYang membuatku rindu kampung halaman",
+            // NIKI — Moonchild
+            'Switchblade' => "Sharp like a switchblade\nCutting through the silence\nWords that we both said\nTurned into violence",
+            'Nightcrawlers' => "We are the nightcrawlers\nLiving in the shadows\nDancing with the moonlight\nThrough the empty hallows",
+            'Selene' => "Selene, goddess of the moon\nLight my way through darkened rooms\nI've been searching for so long\nGuide me where I belong",
+            'Lose' => "I don't wanna lose you\nDon't wanna let go\nEvery moment with you\nIs a moment I know",
+            // NIKI — Nicole
+            'Before' => "Before you came along\nI was just a quiet song\nNow you've turned me into something\nSomething loud and strong",
+            'High School in Jakarta' => "High school in Jakarta\nWhere it all began\nInnocent and hopeful\nWith the world in our hands",
+            'Backburner' => "Am I just a backburner\nSomeone you keep around\nWhen no one else is there\nI'm always to be found",
+            'Ocean Eyes' => "Your ocean eyes pull me in deep\nA current strong, a tide to keep\nI'm drowning in your gaze tonight\nBeneath the waves, everything's right",
+            // Rich Brian — Amen
+            'Amen' => "Amen, I made it through the night\nAmen, everything's alright\nFrom the bottom to the top\nNever gonna stop",
+            'See Me' => "Can you see me now\nI'm standing in the crowd\nRising from the ground\nMaking mama proud",
+            'Glow Like Dat' => "You glow like dat\nLight up the room like dat\nEverything you do\nMakes me come back to you",
+            'Cold' => "It's cold outside but colder in my heart\nBeen feeling frozen right from the start\nNeed someone to thaw the ice\nSomeone warm, someone nice",
+            // Rich Brian — 1999
+            'Love In My Pocket' => "Got love in my pocket\nReady for the day\nNothing gonna stop it\nNothing in my way",
+            '100 Degrees' => "It's a hundred degrees outside\nBut I'm feeling cold inside\nWithout you by my side\nNowhere left to hide",
+            'DOA' => "Dead on arrival\nThat's what they said\nBut I'm still surviving\nGot fire in my head",
+            // Sal Priadi — Kulari Dari Senja
+            'Amin Paling Serius' => "Amin paling serius yang pernah kuucap\nUntuk doa yang paling dalam\nSemoga kita bisa bersama\nSampai waktu tak terbatas",
+            'Ipar Adalah Maut' => "Ipar adalah maut katanya\nTapi cinta tak mengenal batas\nDi antara dua dunia\nKita mencari jalan pulang",
+            // Nadin Amizah — Selamat Ulang Tahun
+            'Bertaut' => "Kita bertaut dalam diam\nDua hati yang saling mengerti\nTanpa kata tanpa suara\nKita tahu ini nyata",
+            'Sorai' => "Sorai di ujung senja\nMenandai akhir dari cerita\nAku melepasmu dengan senyuman\nMeski hati menangis dalam diam",
+            'Rumpang' => "Rumpang di hatiku\nTak bisa ditutup oleh siapapun\nHanya waktu yang bisa menyembuhkan\nLuka yang sudah terlalu dalam",
+            'Seperti Tulang' => "Seperti tulang yang rapuh\nAku berdiri di tengah badai\nMenahan rasa sakit sendiri\nBerharap esok lebih baik",
+            // Fiersa Besari — Tempat Aku Pulang
+            'Waktu Yang Salah' => "Di waktu yang salah kita bertemu\nDi saat yang tak tepat kita bersatu\nMungkin di kehidupan selanjutnya\nKita bisa bersama selamanya",
+            'Celengan Rindu' => "Kusimpan rindu di celengan hati\nMenunggu hari untuk kita bertemu lagi\nSetiap detik terasa begitu panjang\nTanpamu di sini di sampingku sayang",
+            'April' => "April membawa kenangan\nBunga bermekaran di taman\nAku mengingatmu di sini\nDi tempat kita dulu berjumpa",
+            'Nadir' => "Di titik nadir kehidupan\nAku menemukan kekuatan\nDari dalam diri yang terdalam\nBangkit dan berjalan kembali",
+            // Fiersa Besari — Konspirasi Alam Semesta
+            'Garis Terdepan' => "Di garis terdepan aku berdiri\nMenghadapi dunia yang kejam ini\nTak ada yang bisa menghentikanku\nKarena aku punya tujuan hidupku",
+            'Bel Sekolah' => "Bel sekolah berbunyi nyaring\nMenandai hari yang baru dimulai\nKenangan masa kecil yang indah\nTak akan pernah terlupakan",
+            // Raisa — Handmade
+            'Apalah (Arti Menunggu)' => "Apalah arti menunggu\nJika kau tak pernah datang\nAku di sini berdiri sendiri\nMenatap pintu yang tak terbuka",
+            'Kali Kedua' => "Untuk kali kedua aku jatuh cinta\nPada orang yang sama dengan cerita berbeda\nMungkin ini takdir atau kebetulan\nTapi hatiku memilihmu lagi",
+            'Could It Be' => "Could it be that we're meant to be\nTwo souls dancing in harmony\nEvery moment spent with you\nFeels like a dream come true",
+            'Letting You Go' => "Letting you go is the hardest part\nBut I know it's best for both our hearts\nSomeday we'll look back and see\nThis was how it's meant to be",
+            // Raisa — It's Personal
+            'Cinta Sederhana' => "Cinta sederhana yang kuinginkan\nTak perlu mewah tak perlu sempurna\nCukup kau di sini bersamaku\nItu sudah lebih dari cukup",
+            'Bahasa Kalbu' => "Bahasa kalbu yang berbicara\nSaat mulut tak mampu berkata\nHati yang mengerti tanpa suara\nItulah cinta yang sesungguhnya",
+            'Someday' => "Someday we'll find our way back\nTo the love we thought we'd lost\nSomeday the clouds will clear\nAnd it'll all be worth the cost",
+            // Ardhito Pramono — A Quiet Afternoon
+            'Fine Today' => "I'm feeling fine today\nThe sun is shining my way\nWith coffee in my hand\nLife feels exactly as planned",
+            'Bitterlove' => "Bitterlove, that's what we share\nSweet and painful everywhere\nCan't let go, can't hold on tight\nSomewhere lost between wrong and right",
+            "I Just Couldn't Save You Tonight" => "I just couldn't save you tonight\nNo matter how hard I tried\nThe words got lost in the wind\nAnd all I could do was cry",
+            // Danilla — Lintasan Waktu
+            'Lintasan Waktu' => "Lintasan waktu membawa kita\nKe tempat yang tak pernah kita duga\nDi setiap persimpangan ada pilihan\nYang menentukan arah perjalanan",
+            'Ingin Kumiliki' => "Ingin kumiliki seutuhnya\nHatimu yang penuh misteri\nDi balik senyummu ada cerita\nYang ingin kudengarkan sendiri",
+            'Senja di Ambang Pilu' => "Senja di ambang pilu\nMewarnai langit dengan rindu\nAku berdiri di tepi pantai\nMembiarkan angin membawa pergi semua",
+            // Kunto Aji — Mantra Mantra
+            'Pilu Membiru' => "Pilu membiru di hatiku\nWarna yang tak bisa kujelaskan\nAntara sedih dan damai\nAku menemukan keindahan",
+            'Rehat' => "Rehat sejenak dari dunia\nIstirahatkan pikiran dan jiwa\nTak perlu terburu-buru\nSemua akan indah pada waktunya",
+            'Topik Semalam' => "Topik semalam masih terngiang\nKata-kata yang tak tersampaikan\nDi antara tawa dan tangis\nKita mencari jawaban bersama",
+            'Akhir Bulan' => "Akhir bulan selalu sama\nMenunggu waktu yang baru dimulai\nDi antara harapan dan kenyataan\nAku belajar untuk bersabar",
+        ];
+
+        foreach ($songs as $song) {
+            $content = $lyricsData[$song->title] ?? "Lirik untuk lagu {$song->title}\nBelum tersedia saat ini\nNantikan update selanjutnya";
+
+            Lyric::create([
+                'song_id' => $song->id,
+                'content' => $content,
+                'synced_lyrics' => $this->generateSyncedLyrics($content, $song->duration_seconds),
+                'language' => 'id',
+                'source' => fake()->randomElement(['manual', 'genius', 'musixmatch']),
+            ]);
+        }
+
+        // ──────────────────────────────────────────────
+        // 8b. Playlists (3 playlist)
         // ──────────────────────────────────────────────
         $playlistsData = [
             ['user_idx' => 0, 'name' => 'Indonesian Hits 2024', 'desc' => 'Kumpulan lagu Indonesia terpopuler'],
@@ -402,5 +501,30 @@ class DatabaseSeeder extends Seeder
                 'status' => fake()->randomElement(['PENDING', 'RESOLVED', 'REJECTED']),
             ]);
         }
+    }
+
+    /**
+     * Generate synced lyrics (timestamped lines) from plain text content.
+     */
+    private function generateSyncedLyrics(string $content, int $durationSeconds): array
+    {
+        $lines = array_filter(explode("\n", $content), fn($l) => trim($l) !== '');
+        $lines = array_values($lines);
+        $count = count($lines);
+
+        if ($count === 0) return [];
+
+        $interval = $durationSeconds / ($count + 1);
+        $synced = [];
+
+        foreach ($lines as $i => $line) {
+            $timeInSeconds = round(($i + 1) * $interval, 2);
+            $synced[] = [
+                'time' => $timeInSeconds,
+                'text' => trim($line),
+            ];
+        }
+
+        return $synced;
     }
 }

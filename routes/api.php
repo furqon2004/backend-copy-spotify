@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\SearchController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\HomepageController;
 use App\Http\Controllers\Api\LikedSongController;
+use App\Http\Controllers\Api\LyricController;
 use App\Http\Controllers\Api\ContentReportController;
 use App\Http\Controllers\Api\SongAiMetadataController;
 use App\Http\Controllers\Api\Admin\DashboardController as AdminDashboard;
@@ -25,6 +26,10 @@ Route::post('/artist/register', [ArtistController::class , 'store']);
 
 // Public endpoints (no auth required) — songs visible but not playable
 Route::get('/browse', [HomepageController::class, 'browse']);
+
+// Signed URL audio streaming (no auth, signature is the auth)
+Route::get('/audio-stream/{id}', [StreamController::class , 'streamAudio'])
+    ->name('stream.audio');
 
 Route::middleware('auth:sanctum')->group(function () {
 
@@ -56,16 +61,15 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/songs/popular', [SongController::class , 'popular']);
         Route::get('/songs/{id}', [SongController::class , 'show']);
 
+        // Lyrics
+        Route::get('/lyrics/{songId}', [LyricController::class , 'show']);
+
         // Streams
         Route::prefix('streams')->group(function () {
             Route::post('/log', [StreamController::class , 'log']);
             Route::get('/{id}/request-link', [StreamController::class , 'getSecureLink']);
         }
         );
-
-        Route::get('/audio-stream/{id}', [StreamController::class , 'streamAudio'])
-            ->name('stream.audio')
-            ->middleware('signed');
 
         // Playlists
         Route::prefix('playlists')->group(function () {

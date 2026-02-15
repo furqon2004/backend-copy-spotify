@@ -15,14 +15,18 @@ class AuthController extends Controller
 public function login(Request $request): JsonResponse
 {
 $request->validate([
-'email' => 'required|email',
+'login' => 'required|string',
 'password' => 'required'
 ]);
 
-$user = User::with(['admin', 'artist'])->where('email', $request->email)->first();
+$user = User::with(['admin', 'artist'])
+->where(function ($query) use ($request) {
+$query->where('email', $request->login)
+      ->orWhere('username', $request->login);
+})->first();
 
 if (!$user || !Hash::check($request->password, $user->password_hash)) {
-throw ValidationException::withMessages(['email' => ['Kredensial salah.']]);
+throw ValidationException::withMessages(['login' => ['Kredensial salah.']]);
 }
 
 return DB::transaction(function () use ($user) {
