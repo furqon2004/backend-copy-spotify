@@ -1,0 +1,30 @@
+services:
+  app:
+    build: .
+    container_name: spotify-api
+    volumes:
+      - .:/var/www/html
+    ports:
+      - "8000:80"
+    networks:
+      - spotify-net
+    env_file: .env
+
+  db:
+    image: mysql:8.0
+    container_name: spotify-db
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+    networks:
+      - spotify-net
+
+  redis:
+    image: redis:alpine
+    container_name: spotify-redis
+    networks:
+      - spotify-net
+
+networks:
+  spotify-net:
+    driver: bridge
