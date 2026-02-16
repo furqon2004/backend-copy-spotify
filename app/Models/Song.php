@@ -37,4 +37,8 @@ class Song extends Model
     {
         return $this->hasOne(SongAiMetadata::class, 'song_id');
     }
+    public function lyric()
+    {
+        return $this->hasOne(Lyric::class);
+    }
 }

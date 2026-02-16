@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Song;
 use App\Models\Genre;
+use App\Models\Playlist;
 use App\Models\Podcast;
 use App\Models\StreamHistory;
 use Illuminate\Http\JsonResponse;
@@ -92,11 +93,21 @@ class HomepageController extends Controller
             ->limit(10)
             ->get();
 
+        // 5. Made For You — public/AI-generated playlists
+        $madeForYou = Playlist::select(['id', 'user_id', 'name', 'description', 'cover_url', 'is_ai_generated'])
+            ->where('is_public', true)
+            ->with(['user:id,username'])
+            ->withCount('songs')
+            ->latest()
+            ->limit(10)
+            ->get();
+
         return response()->json([
             'recently_played' => $recentSongs,
             'latest_songs' => $latestSongs,
             'popular_songs' => $popularSongs,
             'podcasts' => $podcasts,
+            'made_for_you' => $madeForYou,
             'is_authenticated' => true,
         ]);
     }
