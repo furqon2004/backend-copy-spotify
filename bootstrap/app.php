@@ -24,7 +24,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin' => AdminMiddleware::class,
             'artist' => ArtistMiddleware::class,
         ]);
-        $middleware->redirectGuestsTo(fn () => null);
+        $middleware->redirectGuestsTo(fn () => '/login');
     })
     ->withSchedule(function (Schedule $schedule) {
         // Menjalankan pembersihan token Sanctum yang expired setiap jam
@@ -32,6 +32,9 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions) {
         $exceptions->render(function (AuthenticationException $e, $request) {
-            return response()->json(['message' => 'Unauthenticated.'], 401);
+            if ($request->expectsJson() || $request->is('api/*')) {
+                return response()->json(['message' => 'Unauthenticated.'], 401);
+            }
+            return redirect('/login');
         });
     })->create();

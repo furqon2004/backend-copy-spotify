@@ -25,6 +25,9 @@ RUN composer install --no-dev --optimize-autoloader --no-interaction --no-script
 
 COPY . .
 
+RUN composer dump-autoload --optimize --no-dev \
+    && php artisan package:discover --ansi 2>/dev/null || true
+
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache \
     && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 
