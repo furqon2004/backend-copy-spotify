@@ -4,27 +4,25 @@ services:
     container_name: spotify-api
     volumes:
       - .:/var/www/html
-
     ports:
       - "8000:80"
-    networks:
-      - spotify-net
-    env_file: .env
     environment:
-      - DB_HOST=db
-      - DB_PASSWORD=${DB_PASSWORD:-root}
-      - REDIS_HOST=redis
-      - APP_URL=http://localhost:8000
+      DB_HOST: db
+      DB_PORT: 3306
     depends_on:
       - db
       - redis
+    networks:
+      - spotify-net
 
   db:
     image: mysql:8.0
     container_name: spotify-db
+    restart: always
     environment:
-      MYSQL_DATABASE: ${DB_DATABASE}
-      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: backend_spotify
+      MYSQL_ROOT_PASSWORD: ""
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
     networks:
       - spotify-net
 
