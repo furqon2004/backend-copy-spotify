@@ -18,7 +18,8 @@ class Song extends Model
         'file_size',
         'duration_seconds',
         'stream_count',
-        'is_explicit'
+        'is_explicit',
+        'status',
     ];
 
     public function album()

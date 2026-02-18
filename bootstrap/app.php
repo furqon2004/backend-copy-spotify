@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Middleware\ForceJsonResponse;
+use App\Http\Middleware\AdminMiddleware;
+use App\Http\Middleware\ArtistMiddleware;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -18,6 +20,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->api(prepend: [
             ForceJsonResponse::class,
         ]);
+        $middleware->alias([
+            'admin' => AdminMiddleware::class,
+            'artist' => ArtistMiddleware::class,
+        ]);
+        $middleware->redirectGuestsTo(fn () => null);
     })
     ->withSchedule(function (Schedule $schedule) {
         // Menjalankan pembersihan token Sanctum yang expired setiap jam
