@@ -1,4 +1,4 @@
-<?php 
+<?php
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
@@ -20,17 +20,56 @@ class SearchController extends Controller
     {
         $query = $request->query('q');
 
-        if ($request->has('ai') && $request->ai == 'true') {
-            $songs = $this->searchService->semanticSearch($query);
-            return SongResource::collection($songs);
+        if (!$query) {
+            return response()->json([]);
         }
 
+        if ($request->has('ai') && $request->ai == 'true') {
+            $songs = $this->searchService->semanticSearch($query);
+            return response()->json([
+                'songs' => SongResource::collection($songs),
+                'artists' => [],
+                'playlists' => [],
+                'podcasts' => [],
+                'genres' => [],
+            ]);
+        }
+
+        // 1. Songs
         $songs = Song::where('title', 'LIKE', "%{$query}%")
             ->orWhereHas('artist', fn($q) => $q->where('name', 'LIKE', "%{$query}%"))
-            ->with(['artist:id,name', 'album:id,title,cover_image_url'])
-            ->paginate(20);
+            ->with(['artist:id,name,slug', 'album:id,title,cover_image_url'])
+            ->limit(10)
+            ->get();
 
-        return SongResource::collection($songs);
+        // 2. Artists
+        $artists = \App\Models\Artist::where('name', 'LIKE', "%{$query}%")
+            ->limit(10)
+            ->get();
+
+        // 3. Playlists (Public only)
+        $playlists = \App\Models\Playlist::where('name', 'LIKE', "%{$query}%")
+            ->where('is_public', true)
+            ->limit(10)
+            ->get();
+
+        // 4. Podcasts
+        $podcasts = \App\Models\Podcast::where('title', 'LIKE', "%{$query}%")
+            ->limit(10)
+            ->get();
+
+        // 5. Genres
+        $genres = \App\Models\Genre::where('name', 'LIKE', "%{$query}%")
+            ->limit(10)
+            ->get();
+
+        return response()->json([
+            'songs' => SongResource::collection($songs),
+            'artists' => $artists,
+            'playlists' => $playlists,
+            'podcasts' => $podcasts,
+            'genres' => $genres,
+        ]);
     }
 
     public function generatePlaylist(Request $request)
@@ -55,7 +94,7 @@ class SearchController extends Controller
         }
 
         $playlist = $this->searchService->generatePlaylistFromPrompt(
-            auth()->id(), 
+            auth()->id(),
             $request->prompt
         );
 

@@ -89,7 +89,7 @@ class HomepageController extends Controller
         // 4. Podcasts
         $podcasts = Podcast::select(['id', 'artist_id', 'title', 'cover_image_url', 'category'])
             ->with(['artist:id,name'])
-            ->latest()
+            ->orderBy('title')
             ->limit(10)
             ->get();
 
@@ -98,6 +98,14 @@ class HomepageController extends Controller
             ->where('is_public', true)
             ->with(['user:id,username'])
             ->withCount('songs')
+            ->with([
+                'songs' => function ($q) {
+                    $q->select(['songs.id', 'songs.title', 'songs.artist_id', 'songs.album_id', 'songs.cover_url', 'songs.duration_seconds', 'songs.file_path'])
+                        ->with(['artist:id,name', 'album:id,title,cover_image_url'])
+                        ->orderBy('playlist_items.position')
+                        ->limit(5); // Load first 5 songs for quick playback
+                }
+            ])
             ->latest()
             ->limit(10)
             ->get();

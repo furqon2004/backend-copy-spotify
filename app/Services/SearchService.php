@@ -1,4 +1,4 @@
-<?php 
+<?php
 namespace App\Services;
 
 use App\Models\Song;
@@ -24,16 +24,19 @@ class SearchService
                         'generationConfig' => ['response_mime_type' => 'application/json']
                     ]);
 
-                if ($response->failed()) return collect();
+                if ($response->failed())
+                    return collect();
 
                 $json = $response->json();
                 $text = $json['candidates'][0]['content']['parts'][0]['text'] ?? null;
-                if (!$text) return collect();
+                if (!$text)
+                    return collect();
 
                 $data = json_decode($text, true);
                 $keywords = $data['keywords'] ?? [];
 
-                if (empty($keywords)) return collect();
+                if (empty($keywords))
+                    return collect();
 
                 return Song::query()
                     ->where(function ($q) use ($keywords) {
@@ -60,28 +63,63 @@ class SearchService
                     'generationConfig' => ['response_mime_type' => 'application/json']
                 ]);
 
-            if ($response->failed()) return null;
+            if ($response->failed()) {
+                Log::error('Gemini API failed with status ' . $response->status());
+                // return null; // Don't return, fallback below
+            }
 
             $json = $response->json();
             $text = $json['candidates'][0]['content']['parts'][0]['text'] ?? null;
-            if (!$text) return null;
 
-            $data = json_decode($text, true);
-            if (!$data) return null;
+            if ($text) {
+                $data = json_decode($text, true);
+            }
         } catch (\Exception $e) {
             Log::warning('AI playlist generation failed: ' . $e->getMessage());
-            return null;
+        }
+
+        // Ensure data is an array even if API failed
+        if (empty($data)) {
+            $data = ['genres' => [], 'moods' => [$prompt]]; // Use prompt as mood/keyword fallback
         }
 
         return DB::transaction(function () use ($userId, $data, $prompt) {
-            $songs = Song::query()
-                ->when(!empty($data['genres']), fn($q) => $q->whereHas('genres', fn($g) => $g->whereIn('name', $data['genres'])))
-                ->when(!empty($data['moods']), fn($q) => $q->whereHas('aiMetadata', fn($m) => $m->whereJsonContains('mood_tags', $data['moods'])))
-                ->inRandomOrder()
-                ->limit(rand(8, 10))
+            Log::info("Generating playlist for user $userId with prompt: $prompt");
+
+            // 1. Try strict matching (Genre OR Mood)
+            $query = Song::query();
+
+            // Broaden search: Use OR instead of potential AND if multiple conditions
+            $query->where(function ($q) use ($data) {
+                if (!empty($data['genres'])) {
+                    $q->orWhereHas('genres', fn($g) => $g->whereIn('name', $data['genres']));
+                }
+                if (!empty($data['moods'])) {
+                    $q->orWhereHas('aiMetadata', fn($m) => $m->whereJsonContains('mood_tags', $data['moods']));
+                }
+                // Fallback: title match
+                if (!empty($data['moods'][0])) {
+                    $q->orWhere('title', 'LIKE', '%' . $data['moods'][0] . '%');
+                }
+            });
+
+            $songs = $query->inRandomOrder()
+                ->limit(rand(10, 15))
                 ->get();
 
-            if ($songs->isEmpty()) return null;
+            Log::info("Found " . $songs->count() . " songs matching criteria.");
+
+            // 2. If nothing found, just get random songs (Fallback for "demo" purposes or empty DB metadata)
+            if ($songs->isEmpty()) {
+                Log::info("No songs found, falling back to random.");
+                $songs = Song::inRandomOrder()->limit(5)->get();
+                Log::info("Fallback found " . $songs->count() . " songs.");
+            }
+
+            if ($songs->isEmpty()) {
+                Log::error("Still no songs found. Aborting.");
+                return null;
+            }
 
             $playlist = Playlist::create([
                 'id' => Str::uuid(),
@@ -91,6 +129,8 @@ class SearchService
                 'is_ai_generated' => true,
                 'is_public' => true
             ]);
+
+            Log::info("Created playlist: " . $playlist->id);
 
             foreach ($songs as $index => $song) {
                 PlaylistItem::create([
@@ -121,7 +161,7 @@ class SearchService
     {
         try {
             $response = Http::timeout(10)->withHeaders(['Content-Type' => 'application/json'])
-                ->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" . config('services.gemini.key'), [
+                ->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" . config('services.gemini.key'), [
                     'contents' => [['parts' => [['text' => $this->buildValidationPrompt($prompt)]]]],
                     'generationConfig' => ['response_mime_type' => 'application/json']
                 ]);
@@ -132,7 +172,7 @@ class SearchService
 
             $json = $response->json();
             $text = $json['candidates'][0]['content']['parts'][0]['text'] ?? null;
-            
+
             if (!$text) {
                 return ['valid' => true];
             }

@@ -106,12 +106,27 @@ class DatabaseSeeder extends Seeder
         // ──────────────────────────────────────────────
         // 4. Genres (12 genre)
         // ──────────────────────────────────────────────
-        $genresData = ['Pop', 'Rock', 'R&B', 'Hip-Hop', 'Indie', 'Acoustic', 'Jazz', 'Dangdut', 'Electronic', 'Folk', 'Reggae', 'Blues'];
+        $genresData = [
+            ['name' => 'Pop', 'color' => '#E91E63', 'url' => 'https://picsum.photos/seed/genre1/300/300'],
+            ['name' => 'Rock', 'color' => '#E64A19', 'url' => 'https://picsum.photos/seed/genre2/300/300'],
+            ['name' => 'R&B', 'color' => '#9C27B0', 'url' => 'https://picsum.photos/seed/genre3/300/300'],
+            ['name' => 'Hip-Hop', 'color' => '#673AB7', 'url' => 'https://picsum.photos/seed/genre4/300/300'],
+            ['name' => 'Indie', 'color' => '#3F51B5', 'url' => 'https://picsum.photos/seed/genre5/300/300'],
+            ['name' => 'Acoustic', 'color' => '#03A9F4', 'url' => 'https://picsum.photos/seed/genre6/300/300'],
+            ['name' => 'Jazz', 'color' => '#009688', 'url' => 'https://picsum.photos/seed/genre7/300/300'],
+            ['name' => 'Dangdut', 'color' => '#4CAF50', 'url' => 'https://picsum.photos/seed/genre8/300/300'],
+            ['name' => 'Electronic', 'color' => '#CDDC39', 'url' => 'https://picsum.photos/seed/genre9/300/300'],
+            ['name' => 'Folk', 'color' => '#FFC107', 'url' => 'https://picsum.photos/seed/genre10/300/300'],
+            ['name' => 'Reggae', 'color' => '#FF9800', 'url' => 'https://picsum.photos/seed/genre11/300/300'],
+            ['name' => 'Blues', 'color' => '#795548', 'url' => 'https://picsum.photos/seed/genre12/300/300'],
+        ];
         $genres = [];
         foreach ($genresData as $g) {
             $genres[] = Genre::create([
-                'name' => $g,
-                'slug' => Str::slug($g),
+                'name' => $g['name'],
+                'slug' => Str::slug($g['name']),
+                'color' => $g['color'],
+                'image_url' => $g['url'],
             ]);
         }
 
@@ -512,7 +527,8 @@ class DatabaseSeeder extends Seeder
         $lines = array_values($lines);
         $count = count($lines);
 
-        if ($count === 0) return [];
+        if ($count === 0)
+            return [];
 
         $interval = $durationSeconds / ($count + 1);
         $synced = [];

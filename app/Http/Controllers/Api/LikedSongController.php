@@ -12,17 +12,21 @@ class LikedSongController extends Controller
     public function index(): JsonResponse
     {
         $liked = DB::table('liked_songs')
-            ->where('user_id', auth()->id())
+            ->where('liked_songs.user_id', auth()->id())
             ->join('songs', 'liked_songs.song_id', '=', 'songs.id')
             ->join('artists', 'songs.artist_id', '=', 'artists.id')
+            ->leftJoin('albums', 'songs.album_id', '=', 'albums.id')
             ->select([
-            'songs.id',
-            'songs.title',
-            'songs.cover_url',
-            'songs.duration_seconds',
-            'artists.name as artist_name',
-            'liked_songs.liked_at'
-        ])
+                'songs.id',
+                'songs.artist_id',
+                'songs.title',
+                'songs.cover_url',
+                'songs.duration_seconds',
+                'artists.name as artist_name',
+                'artists.slug as artist_slug',
+                'albums.title as album_title',
+                'liked_songs.liked_at'
+            ])
             ->orderByDesc('liked_songs.liked_at')
             ->paginate(20);
 

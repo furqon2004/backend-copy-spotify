@@ -12,7 +12,7 @@ class GenreController extends Controller
 {
     public function index(): JsonResponse
     {
-        return response()->json(Genre::select(['id', 'name', 'slug'])->get());
+        return response()->json(Genre::select(['id', 'name', 'slug', 'color', 'image_url'])->get());
     }
 
     public function songs($slug)
@@ -33,6 +33,8 @@ class GenreController extends Controller
         $genre = Genre::create([
             'name' => $data['name'],
             'slug' => Str::slug($data['name']),
+            'color' => $request->color ?? '#535353', // Default gray
+            'image_url' => $request->image_url,
         ]);
 
         return response()->json($genre, 201);
@@ -44,11 +46,15 @@ class GenreController extends Controller
 
         $data = $request->validate([
             'name' => 'required|string|max:100|unique:genres,name,' . $id,
+            'color' => 'nullable|string',
+            'image_url' => 'nullable|string',
         ]);
 
         $genre->update([
             'name' => $data['name'],
             'slug' => Str::slug($data['name']),
+            'color' => $request->color ?? $genre->color,
+            'image_url' => $request->image_url ?? $genre->image_url,
         ]);
 
         return response()->json($genre);

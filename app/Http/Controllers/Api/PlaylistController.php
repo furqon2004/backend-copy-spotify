@@ -10,10 +10,18 @@ use Illuminate\Support\Facades\DB;
 
 class PlaylistController extends Controller
 {
+    protected $searchService;
+
+    public function __construct(\App\Services\SearchService $searchService)
+    {
+        $this->searchService = $searchService;
+    }
+
     public function index(): JsonResponse
     {
         $playlists = Playlist::where('user_id', auth()->id())
-            ->select(['id', 'name', 'cover_url', 'is_public'])
+            ->select(['id', 'name', 'cover_url', 'is_public', 'is_ai_generated']) // Added is_ai_generated
+            ->withCount('songs')
             ->latest()
             ->paginate(20);
 
@@ -22,27 +30,62 @@ class PlaylistController extends Controller
 
     public function show(string $id): JsonResponse
     {
-        $playlist = Playlist::with(['songs' => function ($q) {
-            $q->select(['songs.id', 'songs.title', 'songs.cover_url', 'songs.duration_seconds', 'songs.artist_id'])
-                ->with('artist:id,name')
-                ->orderBy('playlist_items.position');
-        }])->findOrFail($id);
+        $playlist = Playlist::with([
+            'songs' => function ($q) {
+                $q->select([
+                    'songs.id',
+                    'songs.title',
+                    'songs.cover_url',
+                    'songs.duration_seconds',
+                    'songs.artist_id',
+                    'songs.album_id',
+                    'playlist_items.id as playlist_item_id', // Select pivot ID
+                    'playlist_items.position'
+                ])
+                    ->with('artist:id,name,slug', 'album:id,title')
+                    ->orderBy('playlist_items.position');
+            }
+        ])->findOrFail($id);
 
         return response()->json($playlist);
     }
 
     public function store(Request $request): JsonResponse
     {
+        $request->validate([
+            'is_ai_generated' => 'boolean',
+            'is_public' => 'boolean'
+        ]);
+
+        if ($request->boolean('is_ai_generated')) {
+            $request->validate([
+                'ai_prompt_used' => 'required|string|max:500'
+            ]);
+
+            $playlist = $this->searchService->generatePlaylistFromPrompt(
+                auth()->id(),
+                $request->ai_prompt_used
+            );
+
+            if (!$playlist) {
+                return response()->json(['message' => 'Failed to generate playlist. Please try a different prompt.'], 422);
+            }
+
+            return response()->json($playlist, 201);
+        }
+
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'cover_url' => 'nullable|string|max:2048',
-            'is_ai_generated' => 'boolean',
             'ai_prompt_used' => 'nullable|string',
-            'is_public' => 'boolean'
         ]);
 
-        $playlist = Playlist::create(array_merge($data, ['user_id' => auth()->id()]));
+        $playlist = Playlist::create(array_merge($data, [
+            'user_id' => auth()->id(),
+            'is_ai_generated' => false
+        ]));
+
         return response()->json($playlist, 201);
     }
 
@@ -72,6 +115,11 @@ class PlaylistController extends Controller
     public function addSong(Request $request, string $id): JsonResponse
     {
         $request->validate(['song_id' => 'required|uuid|exists:songs,id']);
+
+        // Check for duplicates
+        if (PlaylistItem::where('playlist_id', $id)->where('song_id', $request->song_id)->exists()) {
+            return response()->json(['message' => 'Song already in playlist'], 409);
+        }
 
         $lastPosition = PlaylistItem::where('playlist_id', $id)->max('position') ?? 0;
 

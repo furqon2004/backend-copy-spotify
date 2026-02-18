@@ -1,4 +1,4 @@
-<?php 
+<?php
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
@@ -39,7 +39,10 @@ class ArtistController extends Controller
                 $avatarUrl = Cloudinary::upload($request->file('avatar')->getRealPath(), [
                     'folder' => 'spotify_clone/artists',
                     'transformation' => [
-                        'width' => 500, 'height' => 500, 'crop' => 'fill', 'gravity' => 'face'
+                        'width' => 500,
+                        'height' => 500,
+                        'crop' => 'fill',
+                        'gravity' => 'face'
                     ]
                 ])->getSecurePath();
             }
@@ -68,11 +71,13 @@ class ArtistController extends Controller
      */
     public function show(string $slug): JsonResponse
     {
-        $artist = Artist::where('slug', $slug)
+        $artist = Artist::where(function ($query) use ($slug) {
+            $query->where('slug', $slug)
+                ->orWhere('id', $slug);
+        })
             ->with([
                 'songs' => function ($q) {
-                    $q->where('status', 'APPROVED')
-                        ->select(['id', 'artist_id', 'album_id', 'title', 'slug', 'cover_url', 'duration_seconds', 'stream_count'])
+                    $q->select(['id', 'artist_id', 'album_id', 'title', 'slug', 'cover_url', 'duration_seconds', 'stream_count'])
                         ->with('album:id,title,cover_image_url')
                         ->orderBy('stream_count', 'desc')
                         ->limit(20);
@@ -110,7 +115,10 @@ class ArtistController extends Controller
             $avatarUrl = Cloudinary::upload($request->file('avatar')->getRealPath(), [
                 'folder' => 'spotify_clone/artists',
                 'transformation' => [
-                    'width' => 500, 'height' => 500, 'crop' => 'fill', 'gravity' => 'face'
+                    'width' => 500,
+                    'height' => 500,
+                    'crop' => 'fill',
+                    'gravity' => 'face'
                 ]
             ])->getSecurePath();
         }
