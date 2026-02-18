@@ -4,11 +4,20 @@ services:
     container_name: spotify-api
     volumes:
       - .:/var/www/html
+
     ports:
       - "8000:80"
     networks:
       - spotify-net
     env_file: .env
+    environment:
+      - DB_HOST=db
+      - DB_PASSWORD=${DB_PASSWORD:-root}
+      - REDIS_HOST=redis
+      - APP_URL=http://localhost:8000
+    depends_on:
+      - db
+      - redis
 
   db:
     image: mysql:8.0

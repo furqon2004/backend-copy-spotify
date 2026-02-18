@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
 use Dedoc\Scramble\Scramble;
+use Dedoc\Scramble\Generator;
 use Dedoc\Scramble\Support\Generator\OpenApi;
 use Dedoc\Scramble\Support\Generator\SecurityScheme;
 use App\Repositories\Interfaces\EloquentRepositoryInterface;
@@ -23,6 +24,11 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(EloquentRepositoryInterface::class, SongRepository::class);
         $this->app->bind(SongRepositoryInterface::class, SongRepository::class);
         $this->app->bind(ArtistRepositoryInterface::class, ArtistRepository::class);
+
+        // Scramble: jangan crash ketika gagal parse controller
+        $this->app->afterResolving(Generator::class, function (Generator $generator) {
+            $generator->setThrowExceptions(false);
+        });
     }
 
     /**
@@ -30,6 +36,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Konfigurasi Scramble: filter hanya route api
+        Scramble::routes(function (\Illuminate\Routing\Route $route) {
+            return str_starts_with($route->uri, 'api/');
+        });
+
         // Konfigurasi Scramble untuk mendukung Bearer Token (Input Token)
         Scramble::afterOpenApiGenerated(function (OpenApi $openApi) {
             $openApi->secure(
