@@ -11,10 +11,11 @@ use Laravel\Sanctum\HasApiTokens;
 class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable, HasUuids;
- 
+
     protected $fillable = [
         'email',
         'username',
+        'phone_number',
         'password_hash',
         'full_name',
         'profile_image_url',

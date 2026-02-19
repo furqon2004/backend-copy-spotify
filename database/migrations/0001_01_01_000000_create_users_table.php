@@ -15,7 +15,7 @@ return new class extends Migration {
             $table->string('full_name')->nullable();
             $table->string('profile_image_url')->nullable();
             $table->date('date_of_birth')->nullable();
-            $table->enum('gender', ['Male', 'Female',])->nullable();
+            $table->enum('gender', ['Man', 'Woman', 'Non-binary', 'Something else', 'Prefer not to say'])->nullable();
             $table->timestamp('last_login_at')->nullable();
             $table->boolean('is_active')->default(true)->index();
             $table->timestamps();
