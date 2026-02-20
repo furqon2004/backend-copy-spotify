@@ -18,17 +18,13 @@ class SongStoreRequest extends FormRequest
             'album_id' => ['nullable', 'exists:albums,id'],
             'genre_ids' => ['required', 'array', 'min:1'],
             'genre_ids.*' => ['exists:genres,id'],
-            'cover' => [
-                'required',
-                File::image()
-                    ->min('10kb')
-                    ->max('5mb')
-            ],
+            'cover_url' => ['nullable', 'string', 'url', 'max:500'],
             'audio' => [
-                'required',
+                $this->isMethod('post') ? 'required' : 'nullable',
                 File::types(['mp3', 'wav'])
                     ->max('20mb')
             ],
+            'lyrics' => ['nullable', 'string', 'max:10000'],
         ];
     }
 

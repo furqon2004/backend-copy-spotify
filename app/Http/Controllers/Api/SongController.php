@@ -25,6 +25,7 @@ class SongController extends Controller
         return response()->json($songs);
     }
 
+
     public function store(SongStoreRequest $request): JsonResponse
     {
         $song = $this->songService->uploadSong(auth()->user()->artist->id, $request->validated());
