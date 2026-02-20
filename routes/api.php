@@ -55,8 +55,9 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // Search
-    Route::get('/search', [SearchController::class, 'index']);
-    Route::post('/search/ai-playlist', [SearchController::class, 'generatePlaylist']);
+    Route::get('/search', [SearchController::class , 'index']);
+    Route::post('/search/ai-playlist', [SearchController::class , 'generatePlaylist']);
+    Route::get('/search/ai-playlist/remaining', [SearchController::class , 'checkRemainingUsage']);
 
     // Genres
     Route::prefix('genres')->group(function () {

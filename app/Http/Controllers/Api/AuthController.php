@@ -15,7 +15,7 @@ class AuthController extends Controller
     public function login(Request $request): JsonResponse
     {
         $request->validate([
-            'login' => 'required|string',
+            'Username' => 'required|string',
             'password' => 'required'
         ]);
 
@@ -26,7 +26,7 @@ class AuthController extends Controller
             })->first();
 
         if (!$user || !Hash::check($request->password, $user->password_hash)) {
-            throw ValidationException::withMessages(['login' => ['Kredensial salah.']]);
+            throw ValidationException::withMessages(['username' => ['Kredensial salah.']]);
         }
 
         return DB::transaction(function () use ($user) {

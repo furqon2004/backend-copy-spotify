@@ -25,6 +25,7 @@ class SongResource extends JsonResource
                 'cover_url' => $this->when($this->relationLoaded('album'), fn() => $this->album?->cover_image_url),
             ],
             'ai_metadata' => $this->whenLoaded('aiMetadata'),
+            'lyrics' => $this->whenLoaded('lyric', fn() => $this->lyric?->content),
             'liked_at' => $this->whenPivotLoaded('liked_songs', fn() => $this->pivot->liked_at),
         ];
     }

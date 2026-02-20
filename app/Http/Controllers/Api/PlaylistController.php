@@ -62,16 +62,41 @@ class PlaylistController extends Controller
                 'ai_prompt_used' => 'required|string|max:500'
             ]);
 
-            $playlist = $this->searchService->generatePlaylistFromPrompt(
+            // Check daily limit (1x per day)
+            if ($this->searchService->hasReachedDailyLimit(auth()->id())) {
+                return response()->json([
+                    'message' => 'Anda sudah menggunakan AI playlist hari ini. Coba lagi besok.',
+                    'next_available_at' => now()->addDay()->startOfDay()->toIso8601String(),
+                ], 429);
+            }
+
+            $force = $request->boolean('force', false);
+
+            $result = $this->searchService->generatePlaylistFromPrompt(
                 auth()->id(),
-                $request->ai_prompt_used
+                $request->ai_prompt_used,
+                $force
             );
 
-            if (!$playlist) {
+            if (!$result) {
                 return response()->json(['message' => 'Failed to generate playlist. Please try a different prompt.'], 422);
             }
 
-            return response()->json($playlist, 201);
+            $type = $result['type'] ?? 'unknown';
+
+            if ($type === 'error') {
+                return response()->json(['message' => $result['message']], 404);
+            }
+
+            if ($type === 'confirmation_required') {
+                return response()->json($result, 200);
+            }
+
+            if ($type === 'playlist_created') {
+                return response()->json($result['playlist'], 201);
+            }
+
+            return response()->json(['message' => 'Unexpected error'], 500);
         }
 
         $data = $request->validate([
