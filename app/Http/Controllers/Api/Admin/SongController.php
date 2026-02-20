@@ -15,7 +15,7 @@ class SongController extends Controller
     public function index(Request $request): JsonResponse
     {
         $query = Song::with(['artist:id,name,slug', 'album:id,title', 'genres:id,name'])
-            ->select(['id', 'artist_id', 'album_id', 'title', 'slug', 'status', 'stream_count', 'created_at']);
+            ->select(['id', 'artist_id', 'album_id', 'title', 'slug', 'cover_url', 'file_path', 'status', 'moderation_note', 'stream_count', 'duration_seconds', 'created_at']);
 
         if ($request->has('status')) {
             $query->where('status', $request->status);
@@ -44,30 +44,56 @@ class SongController extends Controller
     public function approve(string $id): JsonResponse
     {
         $song = Song::findOrFail($id);
-        $song->update(['status' => 'APPROVED']);
+        $song->update([
+            'status' => 'APPROVED',
+            'moderation_note' => null,
+        ]);
 
         return response()->json([
             'message' => 'Song approved successfully.',
-            'song' => $song,
+            'song' => $song->load('artist:id,name,slug'),
         ]);
     }
 
     /**
-     * Reject a pending song.
+     * Reject a pending song with a mandatory moderation note.
      */
     public function reject(Request $request, string $id): JsonResponse
     {
         $request->validate([
-            'reason' => 'nullable|string|max:500',
+            'reason' => 'required|string|max:500',
         ]);
 
         $song = Song::findOrFail($id);
-        $song->update(['status' => 'REJECTED']);
+        $song->update([
+            'status' => 'REJECTED',
+            'moderation_note' => $request->reason,
+        ]);
 
         return response()->json([
             'message' => 'Song rejected.',
-            'reason' => $request->reason,
-            'song' => $song,
+            'song' => $song->load('artist:id,name,slug'),
+        ]);
+    }
+
+    /**
+     * Takedown a song (copyright / violation).
+     */
+    public function takedown(Request $request, string $id): JsonResponse
+    {
+        $request->validate([
+            'reason' => 'required|string|max:500',
+        ]);
+
+        $song = Song::findOrFail($id);
+        $song->update([
+            'status' => 'TAKEDOWN',
+            'moderation_note' => $request->reason,
+        ]);
+
+        return response()->json([
+            'message' => 'Song taken down.',
+            'song' => $song->load('artist:id,name,slug'),
         ]);
     }
 

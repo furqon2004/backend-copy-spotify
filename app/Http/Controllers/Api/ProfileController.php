@@ -17,14 +17,49 @@ class ProfileController extends Controller
 
     public function show()
     {
-        return response()->json(auth()->user());
+        $user = auth()->user();
+
+        // 1. Public Playlists
+        $publicPlaylists = \App\Models\Playlist::where('user_id', $user->id)
+            ->where('is_public', true)
+            ->latest()
+            ->get();
+
+        // 2. Top Tracks (from StreamHistory)
+        // Group by song_id, count plays, order by count desc
+        $topTracks = \App\Models\StreamHistory::where('user_id', $user->id)
+            ->where('played_at', '>=', now()->subDays(30)) // Last 30 days
+            ->select('song_id', \Illuminate\Support\Facades\DB::raw('count(*) as play_count'))
+            ->groupBy('song_id')
+            ->orderByDesc('play_count')
+            ->limit(5)
+            ->with(['song.artist', 'song.album']) // Eager load relations
+            ->get()
+            ->map(function ($history) {
+                return $history->song;
+            });
+
+        return response()->json([
+            'id' => $user->id,
+            'username' => $user->username,
+            'full_name' => $user->full_name,
+            'email' => $user->email,
+            'profile_image_url' => $user->profile_image_url,
+            'phone_number' => $user->phone_number,
+            'date_of_birth' => $user->date_of_birth,
+            'gender' => $user->gender,
+            'followers_count' => 0, // Placeholder
+            'following_count' => 0, // Placeholder
+            'public_playlists' => $publicPlaylists,
+            'top_tracks' => $topTracks
+        ]);
     }
 
     public function update(Request $request)
     {
         $user = auth()->user();
 
-        $data = $request->only(['full_name', 'date_of_birth', 'gender']);
+        $data = $request->only(['full_name', 'date_of_birth', 'gender', 'phone_number']);
 
         // Handle profile image upload via Cloudinary
         if ($request->hasFile('profile_image')) {
