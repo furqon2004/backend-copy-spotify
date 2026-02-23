@@ -51,7 +51,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // Profile
     Route::prefix('profile')->group(function () {
         Route::get('/', [ProfileController::class, 'show']);
-        Route::put('/', [ProfileController::class, 'update']);
+        Route::post('/', [ProfileController::class, 'update']);
+        Route::put('/password', [ProfileController::class, 'changePassword']);
     });
 
     // Search
