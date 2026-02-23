@@ -33,6 +33,12 @@ class DashboardController extends Controller
                 ->count(),
         ];
 
+        // Song status breakdown
+        $statusBreakdown = Song::where('artist_id', $artistId)
+            ->select('status', DB::raw('COUNT(*) as count'))
+            ->groupBy('status')
+            ->pluck('count', 'status');
+
         // Performance chart — daily (last 7 days)
         $dailyChart = StreamHistory::whereIn('song_id', $songIds)
             ->where('played_at', '>=', now()->subDays(7))
@@ -66,17 +72,28 @@ class DashboardController extends Controller
 
         // Top songs
         $topSongs = Song::where('artist_id', $artistId)
-            ->select(['id', 'title', 'cover_url', 'stream_count', 'duration_seconds'])
+            ->select(['id', 'title', 'cover_url', 'stream_count', 'duration_seconds', 'status'])
             ->orderBy('stream_count', 'desc')
             ->limit(10)
             ->get();
 
+        // Recently rejected songs (show moderation feedback)
+        $rejectedSongs = Song::where('artist_id', $artistId)
+            ->whereIn('status', ['REJECTED', 'TAKEDOWN'])
+            ->whereNotNull('moderation_note')
+            ->select(['id', 'title', 'cover_url', 'status', 'moderation_note', 'updated_at'])
+            ->latest('updated_at')
+            ->limit(5)
+            ->get();
+
         return response()->json([
             'stats' => $stats,
+            'status_breakdown' => $statusBreakdown,
             'daily_chart' => $dailyChart,
             'monthly_chart' => $monthlyChart,
             'yearly_chart' => $yearlyChart,
             'top_songs' => $topSongs,
+            'rejected_songs' => $rejectedSongs,
         ]);
     }
 }

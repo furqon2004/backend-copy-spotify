@@ -2,10 +2,17 @@
 
 namespace App\Services;
 
-use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
+use Cloudinary\Cloudinary;
 
 class CloudinaryService
 {
+    protected $cloudinary;
+
+    public function __construct(Cloudinary $cloudinary)
+    {
+        $this->cloudinary = $cloudinary;
+    }
+
     /**
      * Upload an image to Cloudinary.
      *
@@ -15,7 +22,7 @@ class CloudinaryService
      */
     public function uploadImage($file, string $folder = 'images'): string
     {
-        $result = Cloudinary::upload($file->getRealPath(), [
+        $result = $this->cloudinary->uploadApi()->upload($file->getRealPath(), [
             'folder' => "spotify/{$folder}",
             'resource_type' => 'image',
             'transformation' => [
@@ -24,7 +31,7 @@ class CloudinaryService
             ],
         ]);
 
-        return $result->getSecurePath();
+        return $result['secure_url'];
     }
 
     /**
@@ -36,12 +43,12 @@ class CloudinaryService
      */
     public function uploadAudio($file, string $folder = 'audio'): string
     {
-        $result = Cloudinary::upload($file->getRealPath(), [
+        $result = $this->cloudinary->uploadApi()->upload($file->getRealPath(), [
             'folder' => "spotify/{$folder}",
             'resource_type' => 'video', // Cloudinary uses 'video' for audio files
         ]);
 
-        return $result->getSecurePath();
+        return $result['secure_url'];
     }
 
     /**
@@ -53,7 +60,7 @@ class CloudinaryService
      */
     public function delete(string $publicId, string $resourceType = 'image')
     {
-        return Cloudinary::destroy($publicId, [
+        return $this->cloudinary->uploadApi()->destroy($publicId, [
             'resource_type' => $resourceType,
         ]);
     }

@@ -61,7 +61,7 @@ class AuthController extends Controller
     public function register(Request $request): JsonResponse
     {
         $request->validate([
-            'username' => 'required|string|max:255|unique:users',
+            'username' => 'nullable|string|max:255|unique:users',
             'email' => 'nullable|string|email|max:255|unique:users',
             'phone_number' => 'nullable|string|max:20|unique:users',
             'password' => 'required|string|min:8|confirmed',
@@ -75,8 +75,19 @@ class AuthController extends Controller
         }
 
         return DB::transaction(function () use ($request) {
+            $username = $request->username;
+            if (!$username) {
+                // Auto-generate username
+                $base = $request->full_name ? \Illuminate\Support\Str::slug($request->full_name) : 'user';
+                $username = $base . rand(1000, 9999);
+                // Ensure unique
+                while (User::where('username', $username)->exists()) {
+                    $username = $base . rand(1000, 9999);
+                }
+            }
+
             $user = User::create([
-                'username' => $request->username,
+                'username' => $username,
                 'email' => $request->email, // Can be null if using phone
                 'phone_number' => $request->phone_number,
                 'password_hash' => Hash::make($request->password),

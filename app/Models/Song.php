@@ -20,6 +20,7 @@ class Song extends Model
         'stream_count',
         'is_explicit',
         'status',
+        'moderation_note',
     ];
 
     public function album()
