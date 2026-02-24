@@ -271,6 +271,216 @@ class SearchService
     }
 
     /**
+     * AI Smart Search: auto-detect query type and search accordingly.
+     */
+    public function aiSmartSearch(string $query): array
+    {
+        $cacheKey = 'ai_smart_search_' . md5(strtolower(trim($query)));
+
+        return Cache::remember($cacheKey, now()->addHours(6), function () use ($query) {
+            try {
+                // Step 1: Classify the query type
+                $classification = $this->classifyQuery($query);
+                $queryType = $classification['type'] ?? 'title';
+                $keywords = $classification['keywords'] ?? [];
+                $aiReason = $classification['reason'] ?? '';
+
+                // Step 2: Search based on type
+                $songs = collect();
+
+                switch ($queryType) {
+                    case 'mood':
+                        $songs = $this->searchByMood($query);
+                        break;
+
+                    case 'lyric':
+                        $songs = $this->searchByLyric($query, $keywords);
+                        break;
+
+                    case 'title':
+                    default:
+                        $songs = Song::where('title', 'LIKE', "%{$query}%")
+                            ->orWhereHas('artist', fn($q) => $q->where('name', 'LIKE', "%{$query}%"))
+                            ->with(['artist', 'album', 'aiMetadata'])
+                            ->limit(20)
+                            ->get();
+                        $queryType = 'title';
+                        if (empty($aiReason)) {
+                            $aiReason = 'Menampilkan hasil pencarian berdasarkan judul lagu atau nama artis.';
+                        }
+                        break;
+                }
+
+                return [
+                    'query_type' => $queryType,
+                    'ai_reason' => $aiReason,
+                    'songs' => $songs,
+                    'total' => $songs->count(),
+                ];
+            } catch (\Exception $e) {
+                Log::warning('AI Smart Search failed: ' . $e->getMessage());
+
+                // Fallback to normal title search
+                $songs = Song::where('title', 'LIKE', "%{$query}%")
+                    ->orWhereHas('artist', fn($q) => $q->where('name', 'LIKE', "%{$query}%"))
+                    ->with(['artist', 'album'])
+                    ->limit(20)
+                    ->get();
+
+                return [
+                    'query_type' => 'title',
+                    'ai_reason' => 'Pencarian AI gagal, menampilkan hasil pencarian biasa.',
+                    'songs' => $songs,
+                    'total' => $songs->count(),
+                ];
+            }
+        });
+    }
+
+    /**
+     * Use Gemini to classify query as mood, lyric, or title.
+     */
+    private function classifyQuery(string $query): array
+    {
+        $prompt = $this->buildClassificationPrompt($query);
+
+        $response = Http::timeout(10)->withHeaders(['Content-Type' => 'application/json'])
+            ->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" . config('services.gemini.key'), [
+                'contents' => [['parts' => [['text' => $prompt]]]],
+                'generationConfig' => ['response_mime_type' => 'application/json'],
+            ]);
+
+        if ($response->failed()) {
+            return ['type' => 'title', 'keywords' => [], 'reason' => ''];
+        }
+
+        $json = $response->json();
+        $text = $json['candidates'][0]['content']['parts'][0]['text'] ?? null;
+
+        if (!$text) {
+            return ['type' => 'title', 'keywords' => [], 'reason' => ''];
+        }
+
+        $data = json_decode($text, true);
+        return $data ?? ['type' => 'title', 'keywords' => [], 'reason' => ''];
+    }
+
+    /**
+     * AI-powered mood search: send all songs data to Gemini for matching.
+     */
+    private function searchByMood(string $query): \Illuminate\Support\Collection
+    {
+        $songsData = $this->gatherSongDataForAi();
+
+        if (empty($songsData)) {
+            return collect();
+        }
+
+        $songListText = collect($songsData)->map(function ($s, $i) {
+            $line = ($i + 1) . '. "' . $s['title'] . '" by ' . $s['artist'];
+            if (!empty($s['genres'])) {
+                $line .= ' [' . $s['genres'] . ']';
+            }
+            if (!empty($s['lyric_snippet'])) {
+                $line .= ' — Lirik: "' . $s['lyric_snippet'] . '"';
+            }
+            return $line;
+        })->implode("\n");
+
+        $aiPrompt = "Kamu adalah kurator musik AI. User mencari lagu dengan deskripsi: \"$query\"
+
+Berikut daftar lagu yang tersedia:
+
+$songListText
+
+TUGAS:
+1. Pilih lagu-lagu yang paling COCOK dengan deskripsi \"$query\" berdasarkan judul, genre, lirik, dan mood/suasana.
+2. Urutkan dari yang paling relevan.
+3. Pilih maksimal 15 lagu.
+
+Return ONLY JSON:
+{
+  \"matched_titles\": [\"judul lagu persis dari daftar\"],
+  \"reason\": \"penjelasan singkat kenapa lagu-lagu ini cocok dengan deskripsi user\"
+}";
+
+        try {
+            $response = Http::timeout(30)->withHeaders(['Content-Type' => 'application/json'])
+                ->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" . config('services.gemini.key'), [
+                    'contents' => [['parts' => [['text' => $aiPrompt]]]],
+                    'generationConfig' => ['response_mime_type' => 'application/json'],
+                ]);
+
+            if ($response->failed()) {
+                return $this->fallbackSearch($query);
+            }
+
+            $json = $response->json();
+            $text = $json['candidates'][0]['content']['parts'][0]['text'] ?? null;
+
+            if (!$text) {
+                return $this->fallbackSearch($query);
+            }
+
+            $data = json_decode($text, true);
+            $matchedTitles = $data['matched_titles'] ?? [];
+
+            if (empty($matchedTitles)) {
+                return $this->fallbackSearch($query);
+            }
+
+            return Song::query()
+                ->where(function ($q) use ($matchedTitles) {
+                    foreach ($matchedTitles as $title) {
+                        $q->orWhere('title', 'LIKE', '%' . $title . '%');
+                    }
+                })
+                ->with(['artist', 'album', 'aiMetadata'])
+                ->limit(20)
+                ->get();
+        } catch (\Exception $e) {
+            Log::warning('Mood search failed: ' . $e->getMessage());
+            return $this->fallbackSearch($query);
+        }
+    }
+
+    /**
+     * Search songs by matching lyric content in the database.
+     */
+    private function searchByLyric(string $query, array $keywords = []): \Illuminate\Support\Collection
+    {
+        $searchTerms = !empty($keywords) ? $keywords : explode(' ', $query);
+
+        // Search in lyrics content
+        $songIds = \App\Models\Lyric::query()
+            ->where(function ($q) use ($searchTerms, $query) {
+                // Try exact phrase match first
+                $q->where('content', 'LIKE', '%' . $query . '%');
+
+                // Also try individual keyword matches
+                foreach ($searchTerms as $term) {
+                    if (strlen($term) >= 3) {
+                        $q->orWhere('content', 'LIKE', '%' . $term . '%');
+                    }
+                }
+            })
+            ->pluck('song_id');
+
+        if ($songIds->isEmpty()) {
+            // Fallback: also try title search
+            return Song::where('title', 'LIKE', "%{$query}%")
+                ->with(['artist', 'album', 'aiMetadata', 'lyric'])
+                ->limit(10)
+                ->get();
+        }
+
+        return Song::whereIn('id', $songIds)
+            ->with(['artist', 'album', 'aiMetadata', 'lyric'])
+            ->limit(20)
+            ->get();
+    }
+
+    /**
      * Fallback search using keywords from the prompt.
      */
     private function fallbackSearch(string $prompt): \Illuminate\Support\Collection
@@ -289,6 +499,27 @@ class SearchService
             ->inRandomOrder()
             ->limit(10)
             ->get();
+    }
+
+    private function buildClassificationPrompt(string $query): string
+    {
+        return "Analisis query pencarian musik berikut: \"$query\"
+
+Tentukan tipe pencarian:
+- \"mood\" — jika user mendeskripsikan suasana, aktivitas, atau konteks (contoh: \"lagu enak untuk hujan\", \"lagu sedih malam hari\", \"musik santai untuk kerja\", \"lagu semangat pagi\")
+- \"lyric\" — jika user mengetik kutipan lirik lagu atau potongan kata-kata dari lagu (contoh: \"terlalu banyak yang ku mau\", \"we will we will rock you\", \"cause baby you're a firework\")
+- \"title\" — jika user mengetik judul lagu atau nama artis secara langsung (contoh: \"Bohemian Rhapsody\", \"Tulus\", \"Adele Hello\")
+
+Berikan juga:
+- keywords: kata kunci penting dari query untuk pencarian
+- reason: penjelasan singkat dalam Bahasa Indonesia kenapa query diklasifikasi ke tipe tersebut
+
+Return ONLY JSON:
+{
+  \"type\": \"mood|lyric|title\",
+  \"keywords\": [\"keyword1\", \"keyword2\"],
+  \"reason\": \"penjelasan singkat\"
+}";
     }
 
     private function buildLyricPrompt(string $query): string

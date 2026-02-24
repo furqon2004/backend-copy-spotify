@@ -160,4 +160,22 @@ class SearchController extends Controller
             $this->searchService->getRemainingUsage(auth()->id())
         );
     }
+
+    /**
+     * AI Smart Search: auto-detect mood, lyric, or title query.
+     */
+    public function aiSearch(Request $request)
+    {
+        $request->validate(['q' => 'required|string|min:2']);
+
+        $query = $request->query('q');
+        $result = $this->searchService->aiSmartSearch($query);
+
+        return response()->json([
+            'query_type' => $result['query_type'],
+            'ai_reason' => $result['ai_reason'],
+            'songs' => SongResource::collection($result['songs']),
+            'total' => $result['total'],
+        ]);
+    }
 }
