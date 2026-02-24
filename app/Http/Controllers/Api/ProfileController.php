@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Services\CloudinaryService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 
 class ProfileController extends Controller
 {
@@ -47,6 +48,9 @@ class ProfileController extends Controller
             'profile_image_url' => $user->profile_image_url,
             'phone_number' => $user->phone_number,
             'date_of_birth' => $user->date_of_birth,
+            'date_of_birth_formatted' => $user->date_of_birth
+                ? $user->date_of_birth->format('d F Y')
+                : null,
             'gender' => $user->gender,
             'followers_count' => 0, // Placeholder
             'following_count' => 0, // Placeholder
@@ -84,5 +88,29 @@ class ProfileController extends Controller
         $user->update($data);
 
         return response()->json($user);
+    }
+
+    public function changePassword(Request $request)
+    {
+        $request->validate([
+            'current_password' => 'required|string',
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        $user = auth()->user();
+
+        if (!Hash::check($request->current_password, $user->password_hash)) {
+            return response()->json([
+                'message' => 'Current password is incorrect.'
+            ], 422);
+        }
+
+        $user->update([
+            'password_hash' => Hash::make($request->password),
+        ]);
+
+        return response()->json([
+            'message' => 'Password updated successfully.'
+        ]);
     }
 }
