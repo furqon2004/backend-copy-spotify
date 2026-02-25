@@ -25,7 +25,18 @@ class AuthController extends Controller
                     ->orWhere('username', $request->login);
             })->first();
 
-        if (!$user || !Hash::check($request->password, $user->password_hash)) {
+        if (!$user) {
+            throw ValidationException::withMessages(['login' => ['Kredensial salah.']]);
+        }
+
+        // Social-only user trying to login with password
+        if (!$user->password_hash) {
+            throw ValidationException::withMessages([
+                'login' => ['Akun ini terdaftar via ' . ucfirst($user->provider) . '. Silakan login menggunakan ' . ucfirst($user->provider) . '.']
+            ]);
+        }
+
+        if (!Hash::check($request->password, $user->password_hash)) {
             throw ValidationException::withMessages(['login' => ['Kredensial salah.']]);
         }
 

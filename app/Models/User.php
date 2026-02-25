@@ -22,7 +22,9 @@ class User extends Authenticatable
         'date_of_birth',
         'gender',
         'last_login_at',
-        'is_active'
+        'is_active',
+        'provider',
+        'provider_id',
     ];
 
     protected $hidden = ['password_hash', 'remember_token'];

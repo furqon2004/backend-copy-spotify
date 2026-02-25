@@ -19,6 +19,7 @@ use App\Http\Controllers\Api\LyricController;
 use App\Http\Controllers\Api\ContentReportController;
 use App\Http\Controllers\Api\SongAiMetadataController;
 use App\Http\Controllers\Api\ShareController;
+use App\Http\Controllers\Api\SocialLoginController;
 use App\Http\Controllers\Api\Admin\DashboardController as AdminDashboard;
 use App\Http\Controllers\Api\Admin\SongController as AdminSongController;
 use App\Http\Controllers\Api\Artist\DashboardController as ArtistDashboard;
@@ -29,6 +30,10 @@ use App\Http\Controllers\Api\Artist\ArtistPodcastEpisodeController;
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login'])->name('login');
 Route::post('/artist/register', [ArtistController::class, 'store']);
+
+// Social Login (Google)
+Route::get('/auth/{provider}/redirect', [SocialLoginController::class, 'redirect']);
+Route::get('/auth/{provider}/callback', [SocialLoginController::class, 'callback']);
 
 // Public browse
 Route::get('/browse', [HomepageController::class, 'browse']);
