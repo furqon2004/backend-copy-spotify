@@ -5,7 +5,6 @@ use App\Http\Controllers\Controller;
 use App\Services\SearchService;
 use Illuminate\Http\Request;
 use App\Http\Resources\SongResource;
-use App\Models\Song;
 
 class SearchController extends Controller
 {
@@ -18,16 +17,19 @@ class SearchController extends Controller
 
     public function index(Request $request)
     {
+        $request->validate(['q' => 'required|string|min:1']);
+
         $query = $request->query('q');
+        $type = $request->query('type'); // null (default) | 'mood'
 
-        if (!$query) {
-            return response()->json([]);
-        }
+        // ── Mood search: menggunakan AI (Gemini) ──────────────────────
+        if ($type === 'mood') {
+            $aiResult = $this->searchService->aiSmartSearch($query);
 
-        if ($request->has('ai') && $request->ai == 'true') {
-            $songs = $this->searchService->semanticSearch($query);
             return response()->json([
-                'songs' => SongResource::collection($songs),
+                'query_type' => $aiResult['query_type'],
+                'ai_reason' => $aiResult['ai_reason'],
+                'songs' => SongResource::collection($aiResult['songs']),
                 'artists' => [],
                 'playlists' => [],
                 'podcasts' => [],
@@ -35,35 +37,40 @@ class SearchController extends Controller
             ]);
         }
 
-        // 1. Songs
-        $songs = Song::where('title', 'LIKE', "%{$query}%")
+        // ── Default search: langsung dari database (hemat token) ─────
+
+        // Songs: cari berdasarkan judul ATAU lirik ATAU nama artis
+        $songs = \App\Models\Song::where('title', 'LIKE', "%{$query}%")
             ->orWhereHas('artist', fn($q) => $q->where('name', 'LIKE', "%{$query}%"))
+            ->orWhereHas('lyric', fn($q) => $q->where('content', 'LIKE', "%{$query}%"))
             ->with(['artist:id,name,slug', 'album:id,title,cover_image_url'])
-            ->limit(10)
+            ->limit(20)
             ->get();
 
-        // 2. Artists
+        // Artists
         $artists = \App\Models\Artist::where('name', 'LIKE', "%{$query}%")
             ->limit(10)
             ->get();
 
-        // 3. Playlists (Public only)
+        // Playlists (Public only)
         $playlists = \App\Models\Playlist::where('name', 'LIKE', "%{$query}%")
             ->where('is_public', true)
             ->limit(10)
             ->get();
 
-        // 4. Podcasts
+        // Podcasts
         $podcasts = \App\Models\Podcast::where('title', 'LIKE', "%{$query}%")
             ->limit(10)
             ->get();
 
-        // 5. Genres
+        // Genres
         $genres = \App\Models\Genre::where('name', 'LIKE', "%{$query}%")
             ->limit(10)
             ->get();
 
         return response()->json([
+            'query_type' => 'default',
+            'ai_reason' => null,
             'songs' => SongResource::collection($songs),
             'artists' => $artists,
             'playlists' => $playlists,
@@ -159,23 +166,5 @@ class SearchController extends Controller
         return response()->json(
             $this->searchService->getRemainingUsage(auth()->id())
         );
-    }
-
-    /**
-     * AI Smart Search: auto-detect mood, lyric, or title query.
-     */
-    public function aiSearch(Request $request)
-    {
-        $request->validate(['q' => 'required|string|min:2']);
-
-        $query = $request->query('q');
-        $result = $this->searchService->aiSmartSearch($query);
-
-        return response()->json([
-            'query_type' => $result['query_type'],
-            'ai_reason' => $result['ai_reason'],
-            'songs' => SongResource::collection($result['songs']),
-            'total' => $result['total'],
-        ]);
     }
 }
