@@ -43,7 +43,7 @@ class SearchService
         return Cache::remember($cacheKey, now()->addHours(12), function () use ($prompt) {
             try {
                 $response = Http::timeout(15)->withHeaders(['Content-Type' => 'application/json'])
-                    ->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" . config('services.gemini.key'), [
+                    ->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" . config('services.gemini.key'), [
                         'contents' => [['parts' => [['text' => $this->buildLyricPrompt($prompt)]]]],
                         'generationConfig' => ['response_mime_type' => 'application/json']
                     ]);
@@ -245,7 +245,7 @@ class SearchService
             $aiPrompt = $this->buildSmartPlaylistPrompt($prompt, $songListText);
 
             $response = Http::timeout(30)->withHeaders(['Content-Type' => 'application/json'])
-                ->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" . config('services.gemini.key'), [
+                ->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" . config('services.gemini.key'), [
                     'contents' => [['parts' => [['text' => $aiPrompt]]]],
                     'generationConfig' => ['response_mime_type' => 'application/json'],
                 ]);
@@ -345,7 +345,7 @@ class SearchService
         $prompt = $this->buildClassificationPrompt($query);
 
         $response = Http::timeout(10)->withHeaders(['Content-Type' => 'application/json'])
-            ->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" . config('services.gemini.key'), [
+            ->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" . config('services.gemini.key'), [
                 'contents' => [['parts' => [['text' => $prompt]]]],
                 'generationConfig' => ['response_mime_type' => 'application/json'],
             ]);
@@ -406,7 +406,7 @@ Return ONLY JSON:
 
         try {
             $response = Http::timeout(30)->withHeaders(['Content-Type' => 'application/json'])
-                ->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" . config('services.gemini.key'), [
+                ->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" . config('services.gemini.key'), [
                     'contents' => [['parts' => [['text' => $aiPrompt]]]],
                     'generationConfig' => ['response_mime_type' => 'application/json'],
                 ]);

@@ -42,7 +42,7 @@ class SocialLoginController extends Controller
      * Menerima `code` dari provider, exchange ke user info,
      * lalu create/find user dan return Sanctum tokens.
      */
-    public function callback(Request $request, string $provider): JsonResponse
+    public function callback(Request $request, string $provider): \Illuminate\Http\JsonResponse|\Illuminate\Http\RedirectResponse
     {
         if (!in_array($provider, $this->allowedProviders)) {
             return response()->json([
@@ -103,21 +103,8 @@ class SocialLoginController extends Controller
             $accessToken = $user->createToken('access_token', ['*'], $expiration)->plainTextToken;
             $refreshToken = $user->createToken('refresh_token', ['issue-access-token'], now()->addMonths(6))->plainTextToken;
 
-            return response()->json([
-                'access_token' => $accessToken,
-                'refresh_token' => $refreshToken,
-                'token_type' => 'Bearer',
-                'expires_at' => $expiration->toDateTimeString(),
-                'role' => $this->getUserRole($user),
-                'is_new_user' => $user->wasRecentlyCreated,
-                'user' => [
-                    'id' => $user->id,
-                    'username' => $user->username,
-                    'email' => $user->email,
-                    'full_name' => $user->full_name,
-                    'profile_image_url' => $user->profile_image_url,
-                ]
-            ]);
+            $frontendUrl = env('FRONTEND_URL', 'http://localhost:3000');
+            return redirect()->away($frontendUrl . '/auth/callback?token=' . urlencode($accessToken) . '&refresh_token=' . urlencode($refreshToken) . '&role=' . urlencode($this->getUserRole($user)));
         });
     }
 
@@ -141,15 +128,19 @@ class SocialLoginController extends Controller
 
     private function getExpirationByRole($user)
     {
-        if ($user->admin) return now()->addDay();
-        if ($user->artist) return now()->addMonth();
+        if ($user->admin)
+            return now()->addDay();
+        if ($user->artist)
+            return now()->addMonth();
         return now()->addMonths(2);
     }
 
     private function getUserRole($user): string
     {
-        if ($user->admin) return 'ADMIN';
-        if ($user->artist) return 'ARTIST';
+        if ($user->admin)
+            return 'ADMIN';
+        if ($user->artist)
+            return 'ARTIST';
         return 'USER';
     }
 }
