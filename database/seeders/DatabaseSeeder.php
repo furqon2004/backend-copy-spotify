@@ -293,6 +293,7 @@ class DatabaseSeeder extends Seeder
             'name' => 'My Favorite Tracks',
             'description' => 'Kumpulan lagu terbaru dari Cloudinary',
             'is_public' => true,
+            'cover_url' => 'https://picsum.photos/seed/my_fav_tracks/300/300',
             'created_at' => $now,
             'updated_at' => $now,
         ];
@@ -308,8 +309,80 @@ class DatabaseSeeder extends Seeder
             ];
         }
 
+        // Playlist 2 - Top Hits Indo
+        $playlistId2 = Str::uuid()->toString();
+        $playlistsInsert[] = [
+            'id' => $playlistId2,
+            'user_id' => $usersData[1]['id'],
+            'name' => 'Top Hits Indonesia',
+            'description' => 'Lagu-lagu hits Indonesia terpopuler saat ini',
+            'is_public' => true,
+            'cover_url' => 'https://picsum.photos/seed/top_hits_indo/300/300',
+            'created_at' => $now,
+            'updated_at' => $now,
+        ];
+
+        foreach (array_slice($songIds, 10, 10) as $idx => $sId) {
+            $playlistItemsInsert[] = [
+                'id' => Str::uuid()->toString(),
+                'playlist_id' => $playlistId2,
+                'song_id' => $sId,
+                'position' => $idx + 1,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+        }
+
+        // Playlist 3 - Chill Vibes
+        $playlistId3 = Str::uuid()->toString();
+        $playlistsInsert[] = [
+            'id' => $playlistId3,
+            'user_id' => $usersData[2]['id'],
+            'name' => 'Chill Vibes',
+            'description' => 'Lagu santai untuk menemani harimu',
+            'is_public' => true,
+            'cover_url' => 'https://picsum.photos/seed/chill_vibes/300/300',
+            'created_at' => $now,
+            'updated_at' => $now,
+        ];
+
+        foreach (array_slice($songIds, 20, 10) as $idx => $sId) {
+            $playlistItemsInsert[] = [
+                'id' => Str::uuid()->toString(),
+                'playlist_id' => $playlistId3,
+                'song_id' => $sId,
+                'position' => $idx + 1,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+        }
+
         Playlist::insert($playlistsInsert);
         PlaylistItem::insert($playlistItemsInsert);
+
+        // ─── Stream History (Recently Played) ─────────────────────────────
+        $streamInsert = [];
+        $sources = ['PLAYLIST', 'SEARCH', 'AI_RECOMMENDATION'];
+
+        foreach ($usersData as $userData) {
+            // Each user has listened to 15-25 random songs
+            $listenedSongs = array_rand(array_flip($songIds), min(20, count($songIds)));
+            foreach ($listenedSongs as $idx => $sId) {
+                $streamInsert[] = [
+                    'id' => Str::uuid()->toString(),
+                    'user_id' => $userData['id'],
+                    'song_id' => $sId,
+                    'played_at' => $now->copy()->subMinutes(rand(1, 1440 * 7)), // Within last 7 days
+                    'duration_played_ms' => rand(60000, 300000),
+                    'source' => $sources[array_rand($sources)],
+                    'device' => 'web',
+                ];
+            }
+        }
+
+        foreach (array_chunk($streamInsert, 500) as $chunk) {
+            StreamHistory::insert($chunk);
+        }
     }
 
     private function generateSyncedLyrics(string $content, int $durationSeconds): array
