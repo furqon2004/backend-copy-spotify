@@ -32,9 +32,11 @@ class AuthController extends Controller
 
         // Social-only user trying to login with password
         if (!$user->password_hash) {
-            throw ValidationException::withMessages([
-                'login' => ['Akun ini terdaftar via ' . ucfirst($user->provider) . '. Silakan login menggunakan ' . ucfirst($user->provider) . '.']
-            ]);
+            return response()->json([
+                'message' => 'Akun ini terdaftar via ' . ucfirst($user->provider ?? 'social') . '. Silakan login menggunakan ' . ucfirst($user->provider ?? 'social') . '.',
+                'error_code' => 'SOCIAL_LOGIN_ONLY',
+                'provider' => $user->provider,
+            ], 422);
         }
 
         if (!Hash::check($request->password, $user->password_hash)) {

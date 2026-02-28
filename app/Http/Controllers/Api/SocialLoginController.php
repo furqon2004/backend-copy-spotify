@@ -45,14 +45,14 @@ class SocialLoginController extends Controller
     public function callback(Request $request, string $provider): JsonResponse|\Illuminate\Http\RedirectResponse
     {
         if (!in_array($provider, $this->allowedProviders)) {
-            return redirect(config('app.frontend_url', env('FRONTEND_URL', 'http://localhost:3000'))
+            return redirect(env('FRONTEND_URL', 'http://localhost:3000')
                 . '/auth/callback?error=' . urlencode("Provider '{$provider}' tidak didukung."));
         }
 
         try {
             $socialUser = Socialite::driver($provider)->stateless()->user();
         } catch (\Exception $e) {
-            return redirect(config('app.frontend_url', env('FRONTEND_URL', 'http://localhost:3000'))
+            return redirect(env('FRONTEND_URL', 'http://localhost:3000')
                 . '/auth/callback?error=' . urlencode('Gagal autentikasi dengan ' . ucfirst($provider) . ': ' . $e->getMessage()));
         }
 
