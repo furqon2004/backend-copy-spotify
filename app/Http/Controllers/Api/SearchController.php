@@ -40,9 +40,12 @@ class SearchController extends Controller
         // ── Default search: langsung dari database (hemat token) ─────
 
         // Songs: cari berdasarkan judul ATAU lirik ATAU nama artis
-        $songs = \App\Models\Song::where('title', 'LIKE', "%{$query}%")
-            ->orWhereHas('artist', fn($q) => $q->where('name', 'LIKE', "%{$query}%"))
-            ->orWhereHas('lyric', fn($q) => $q->where('content', 'LIKE', "%{$query}%"))
+        $songs = \App\Models\Song::where('status', 'APPROVED')
+            ->where(function ($q) use ($query) {
+                $q->where('title', 'LIKE', "%{$query}%")
+                    ->orWhereHas('artist', fn($q2) => $q2->where('name', 'LIKE', "%{$query}%"))
+                    ->orWhereHas('lyric', fn($q2) => $q2->where('content', 'LIKE', "%{$query}%"));
+            })
             ->with(['artist:id,name,slug', 'album:id,title,cover_image_url'])
             ->limit(20)
             ->get();
