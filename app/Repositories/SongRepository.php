@@ -1,4 +1,4 @@
-<?php 
+<?php
 namespace App\Repositories;
 
 use App\Models\Song;
@@ -34,7 +34,7 @@ class SongRepository implements SongRepositoryInterface
     public function paginateByArtist(string $artistId, int $perPage = 20): LengthAwarePaginator
     {
         return $this->model->where('artist_id', $artistId)
-            ->with(['album:id,title,cover_image_url', 'lyric'])
+            ->with(['album:id,title,cover_image_url', 'lyric', 'genres:id,name'])
             ->latest()
             ->paginate($perPage);
     }
