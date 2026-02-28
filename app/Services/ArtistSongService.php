@@ -19,7 +19,7 @@ class ArtistSongService
     {
         return DB::transaction(function () use ($artistId, $data) {
             // Audio MP3 diupload ke Cloudinary
-            $audioUpload = Cloudinary::upload($data['audio']->getRealPath(), [
+            $audioUpload = cloudinary()->uploadApi()->upload($data['audio']->getRealPath(), [
                 'folder' => 'spotify_clone/songs',
                 'resource_type' => 'video',
                 'chunk_size' => 6000000
@@ -27,10 +27,10 @@ class ArtistSongService
 
             $coverUrl = null;
             if (isset($data['cover'])) {
-                $coverUpload = Cloudinary::upload($data['cover']->getRealPath(), [
+                $coverUpload = cloudinary()->uploadApi()->upload($data['cover']->getRealPath(), [
                     'folder' => 'spotify_clone/song_covers',
                 ]);
-                $coverUrl = $coverUpload->getSecurePath();
+                $coverUrl = $coverUpload['secure_url'];
             }
 
             $song = $this->songRepo->create([
@@ -40,9 +40,9 @@ class ArtistSongService
                 'title' => $data['title'],
                 'slug' => Str::slug($data['title']) . '-' . Str::random(5),
                 'cover_url' => $coverUrl ?? $data['cover_url'] ?? null,
-                'file_path' => $audioUpload->getSecurePath(),
+                'file_path' => $audioUpload['secure_url'],
                 'file_size' => $data['audio']->getSize(),
-                'duration_seconds' => (int) $audioUpload->getDuration(),
+                'duration_seconds' => (int) ($audioUpload['duration'] ?? 0),
             ]);
 
             // Create lyric record if lyrics provided (optional)
@@ -69,21 +69,21 @@ class ArtistSongService
         return DB::transaction(function () use ($song, $data) {
 
             if (isset($data['audio'])) {
-                $audioUpload = Cloudinary::upload($data['audio']->getRealPath(), [
+                $audioUpload = cloudinary()->uploadApi()->upload($data['audio']->getRealPath(), [
                     'folder' => 'spotify_clone/songs',
                     'resource_type' => 'video',
                     'chunk_size' => 6000000
                 ]);
-                $data['file_path'] = $audioUpload->getSecurePath();
+                $data['file_path'] = $audioUpload['secure_url'];
                 $data['file_size'] = $data['audio']->getSize();
-                $data['duration_seconds'] = (int) $audioUpload->getDuration();
+                $data['duration_seconds'] = (int) ($audioUpload['duration'] ?? 0);
             }
 
             if (isset($data['cover'])) {
-                $coverUpload = Cloudinary::upload($data['cover']->getRealPath(), [
+                $coverUpload = cloudinary()->uploadApi()->upload($data['cover']->getRealPath(), [
                     'folder' => 'spotify_clone/song_covers',
                 ]);
-                $data['cover_url'] = $coverUpload->getSecurePath();
+                $data['cover_url'] = $coverUpload['secure_url'];
             }
 
             // Handle lyrics: create/update/delete
@@ -120,7 +120,7 @@ class ArtistSongService
 
         DB::transaction(function () use ($song) {
             $publicId = 'spotify_clone/songs/' . pathinfo($song->file_path, PATHINFO_FILENAME);
-            Cloudinary::destroy($publicId, ['resource_type' => 'video']);
+            cloudinary()->uploadApi()->destroy($publicId, ['resource_type' => 'video']);
 
             $this->songRepo->delete($song->id);
         });
