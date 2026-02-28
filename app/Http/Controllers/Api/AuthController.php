@@ -22,7 +22,8 @@ class AuthController extends Controller
         $user = User::with(['admin', 'artist'])
             ->where(function ($query) use ($request) {
                 $query->where('email', $request->login)
-                    ->orWhere('username', $request->login);
+                    ->orWhere('username', $request->login)
+                    ->orWhere('phone_number', $request->login);
             })->first();
 
         if (!$user) {

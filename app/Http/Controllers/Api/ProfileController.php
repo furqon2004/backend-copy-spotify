@@ -63,7 +63,13 @@ class ProfileController extends Controller
     {
         $user = auth()->user();
 
-        $data = $request->only(['full_name', 'date_of_birth', 'gender', 'phone_number']);
+        $data = $request->only(['username', 'full_name', 'date_of_birth', 'gender', 'phone_number']);
+
+        if ($request->has('username')) {
+            $request->validate([
+                'username' => 'required|string|max:255|unique:users,username,' . $user->id,
+            ]);
+        }
 
         // Handle profile image upload via Cloudinary
         if ($request->hasFile('profile_image')) {
