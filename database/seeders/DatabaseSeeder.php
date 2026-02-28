@@ -71,7 +71,10 @@ class DatabaseSeeder extends Seeder
             'Hindia', 'Kunto Aji', 'for Revenge', 'Kaleb J', 'Kahitna ft Monita', 
             'Glenn Fredly', 'Chrisye', 'Dewa', 'Bring Me The Horizon', 'Billie Eilish', 
             'Elvis Presley', 'Swedish House Mafia ft The Weeknd', 'PMVATT', 'Oasis', 
-            'Bernadya', 'Sal Priadi', 'Nadin Amizah', 'Barasuara', 'Mahalini', 'Linkin Park'
+            'Bernadya', 'Sal Priadi', 'Nadin Amizah', 'Barasuara', 'Mahalini', 'Linkin Park',
+            'Slipknot', 'Noel Gallagher\'s High Flying Birds', 'LANY', 'Paramore',
+            'Sydney Rose', 'Mariah Carey & Boyz II Men', 'My Chemical Romance',
+            'Rico Blanco', 'Evanescence', 'Radiohead', 'Bruno Mars', 'Sienna Spiro', 'Taylor Swift'
         ];
 
         $usersArtistInsert = [];
@@ -135,6 +138,7 @@ class DatabaseSeeder extends Seeder
         Album::insert($albumsInsert);
 
         $songsRaw = [
+            // ─── Batch 1 (original) ───────────────────────────────────────
             ['Hindia', 'Everything U Are', 'https://res.cloudinary.com/dkqwi4lk9/video/upload/v1772181912/Hindia_-_everything_u_are_l4dnni.mp3'],
             ['Kunto Aji', 'Pilu Membiru', 'https://res.cloudinary.com/dkqwi4lk9/video/upload/v1772181911/Kunto_Aji_-_Pilu_Membiru_Official_Audio_z9j95z.mp3'],
             ['for Revenge', 'Penyangkalan', 'https://res.cloudinary.com/dkqwi4lk9/video/upload/v1772181896/for_Revenge_-_Penyangkalan_Official_Music_Video_nmlfrq.mp3'],
@@ -160,6 +164,33 @@ class DatabaseSeeder extends Seeder
             ['Bernadya', 'Berlari', 'https://res.cloudinary.com/dkqwi4lk9/video/upload/v1772181806/Bernadya_-_Berlari_Official_Video_k0qtgi.mp3'],
             ['Mahalini', 'Bawa Dia Kembali', 'https://res.cloudinary.com/dkqwi4lk9/video/upload/v1772181802/MAHALINI_-_BAWA_DIA_KEMBALI_FABULA_VIDEO_LIRIK_tyesb4.mp3'],
             ['Linkin Park', 'Lost', 'https://res.cloudinary.com/dkqwi4lk9/video/upload/v1772181794/Lost_Official_Music_Video_-_Linkin_Park_hlc84e.mp3'],
+
+            // ─── Batch 2 (new songs) ─────────────────────────────────────
+            ['Slipknot', 'Snuff', 'https://res.cloudinary.com/dkqwi4lk9/video/upload/v1772267627/Snuff_hxeo9r.mp3'],
+            ['Nadin Amizah', 'Taruh', 'https://res.cloudinary.com/dkqwi4lk9/video/upload/v1772267625/Taruh_gw5olo.mp3'],
+            ['Noel Gallagher\'s High Flying Birds', 'If I Had a Gun', 'https://res.cloudinary.com/dkqwi4lk9/video/upload/v1772269680/If_I_Had_A_Gun_lgu2z0.mp3'],
+            ['LANY', 'Alonica', 'https://res.cloudinary.com/dkqwi4lk9/video/upload/v1772269666/Alonica_yiac5x.mp3'],
+            ['Hindia', 'Cincin', 'https://res.cloudinary.com/dkqwi4lk9/video/upload/v1772269669/Cincin_j32hww.mp3'],
+            ['Paramore', 'The Only Exception', 'https://res.cloudinary.com/dkqwi4lk9/video/upload/v1772267626/The_Only_Exception_akyxsa.mp3'],
+            ['Nadin Amizah', 'Cermin', 'https://res.cloudinary.com/dkqwi4lk9/video/upload/v1772269681/Cermin_kqrtgr.mp3'],
+            ['Sydney Rose', 'We Hug Now', 'https://res.cloudinary.com/dkqwi4lk9/video/upload/v1772267630/We_Hug_Now_f7dpkb.mp3'],
+            ['Mariah Carey & Boyz II Men', 'One Sweet Day', 'https://res.cloudinary.com/dkqwi4lk9/video/upload/v1772267622/One_Sweet_Day_hftmkb.mp3'],
+            ['Sal Priadi', 'Ada Titik-Titik di Ujung Doa', 'https://res.cloudinary.com/dkqwi4lk9/video/upload/v1772267634/Ada_titik-titik_di_ujung_doa_l1p3zs.mp3'],
+            ['My Chemical Romance', 'I Don\'t Love You', 'https://res.cloudinary.com/dkqwi4lk9/video/upload/v1772269682/I_Don_t_Love_You_llkctw.mp3'],
+            ['Rico Blanco', 'Your Universe', 'https://res.cloudinary.com/dkqwi4lk9/video/upload/v1772267633/Your_Universe_q08qsj.mp3'],
+            ['for Revenge', 'Serana', 'https://res.cloudinary.com/dkqwi4lk9/video/upload/v1772267624/Serana_czdx94.mp3'],
+            ['Oasis', 'Don\'t Go Away', 'https://res.cloudinary.com/dkqwi4lk9/video/upload/v1772269673/Don_t_Go_Away_wme6mi.mp3'],
+            ['Evanescence', 'Bring Me to Life', 'https://res.cloudinary.com/dkqwi4lk9/video/upload/v1772269670/Bring_Me_To_Life_cczxhz.mp3'],
+            ['Radiohead', 'Creep', 'https://res.cloudinary.com/dkqwi4lk9/video/upload/v1772269673/Creep_bmbizj.mp3'],
+            ['Oasis', 'Wonderwall', 'https://res.cloudinary.com/dkqwi4lk9/video/upload/v1772267634/Wonderwall_zltpio.mp3'],
+            ['Bruno Mars', 'Talking to the Moon', 'https://res.cloudinary.com/dkqwi4lk9/video/upload/v1772267626/Talking_to_the_Moon_vkmkl7.mp3'],
+            ['Sienna Spiro', 'Die On This Hill', 'https://res.cloudinary.com/dkqwi4lk9/video/upload/v1772269685/Die_On_This_Hill_fzyjhm.mp3'],
+            ['Taylor Swift', 'All Too Well', 'https://res.cloudinary.com/dkqwi4lk9/video/upload/v1772267634/All_Too_Well_Taylor_s_Version_uqvg8e.mp3'],
+            ['Oasis', 'Stand by Me', 'https://res.cloudinary.com/dkqwi4lk9/video/upload/v1772267631/Stand_by_Me_sbxp2h.mp3'],
+            ['Hindia', 'Nina', 'https://res.cloudinary.com/dkqwi4lk9/video/upload/v1772269682/Nina_mlk936.mp3'],
+            ['Billie Eilish', 'Watch', 'https://res.cloudinary.com/dkqwi4lk9/video/upload/v1772267628/watch_zj8prx.mp3'],
+            ['Sal Priadi', 'Gala Bunga Matahari', 'https://res.cloudinary.com/dkqwi4lk9/video/upload/v1772269675/Gala_bunga_matahari_yzqozz.mp3'],
+            ['Hindia', 'Membasuh', 'https://res.cloudinary.com/dkqwi4lk9/video/upload/v1772269684/Membasuh_awpcyx.mp3'],
         ];
 
         $songsInsert = [];
@@ -184,7 +215,7 @@ class DatabaseSeeder extends Seeder
                 'file_path' => $s[2],
                 'file_size' => rand(3000000, 9000000),
                 'cover_url' => 'https://picsum.photos/seed/' . Str::slug($s[1]) . '/300/300',
-                'stream_count' => rand(10000, 5000000),
+                'stream_count' => rand(500000, 10000000),
                 'created_at' => $now,
                 'updated_at' => $now,
             ];
