@@ -22,8 +22,16 @@ class ArtistSongService
             $audioUpload = Cloudinary::upload($data['audio']->getRealPath(), [
                 'folder' => 'spotify_clone/songs',
                 'resource_type' => 'video',
-                'chunk_size' => 6000000 
+                'chunk_size' => 6000000
             ]);
+
+            $coverUrl = null;
+            if (isset($data['cover'])) {
+                $coverUpload = Cloudinary::upload($data['cover']->getRealPath(), [
+                    'folder' => 'spotify_clone/song_covers',
+                ]);
+                $coverUrl = $coverUpload->getSecurePath();
+            }
 
             $song = $this->songRepo->create([
                 'id' => Str::uuid(),
@@ -31,7 +39,7 @@ class ArtistSongService
                 'album_id' => $data['album_id'] ?? null,
                 'title' => $data['title'],
                 'slug' => Str::slug($data['title']) . '-' . Str::random(5),
-                'cover_url' => $data['cover_url'] ?? null,
+                'cover_url' => $coverUrl ?? $data['cover_url'] ?? null,
                 'file_path' => $audioUpload->getSecurePath(),
                 'file_size' => $data['audio']->getSize(),
                 'duration_seconds' => (int) $audioUpload->getDuration(),
@@ -41,18 +49,23 @@ class ArtistSongService
             if (!empty($data['lyrics'])) {
                 $song->lyric()->create([
                     'content' => $data['lyrics'],
-                    'source'  => 'manual',
+                    'source' => 'manual',
                 ]);
             }
 
-            return $song->load('lyric');
+            // Sync genres
+            if (!empty($data['genre_ids'])) {
+                $song->genres()->sync($data['genre_ids']);
+            }
+
+            return $song->load(['lyric', 'genres']);
         });
     }
 
     public function updateSong(string $id, string $artistId, array $data)
     {
         $song = $this->songRepo->findOwnedByArtist($id, $artistId);
-        
+
         return DB::transaction(function () use ($song, $data) {
 
             if (isset($data['audio'])) {
@@ -64,6 +77,13 @@ class ArtistSongService
                 $data['file_path'] = $audioUpload->getSecurePath();
                 $data['file_size'] = $data['audio']->getSize();
                 $data['duration_seconds'] = (int) $audioUpload->getDuration();
+            }
+
+            if (isset($data['cover'])) {
+                $coverUpload = Cloudinary::upload($data['cover']->getRealPath(), [
+                    'folder' => 'spotify_clone/song_covers',
+                ]);
+                $data['cover_url'] = $coverUpload->getSecurePath();
             }
 
             // Handle lyrics: create/update/delete
@@ -78,25 +98,30 @@ class ArtistSongService
                 }
             }
 
+            // Sync genres before unsetting
+            if (isset($data['genre_ids'])) {
+                $song->genres()->sync($data['genre_ids']);
+            }
+
             // Remove non-column keys before updating song
-            unset($data['lyrics'], $data['audio'], $data['genre_ids']);
+            unset($data['lyrics'], $data['audio'], $data['cover'], $data['genre_ids']);
 
             if (!empty($data)) {
                 $this->songRepo->update($song->id, $data);
             }
 
-            return $song->fresh(['lyric']);
+            return $song->fresh(['lyric', 'genres']);
         });
     }
 
     public function deleteSong(string $id, string $artistId)
     {
         $song = $this->songRepo->findOwnedByArtist($id, $artistId);
-        
+
         DB::transaction(function () use ($song) {
             $publicId = 'spotify_clone/songs/' . pathinfo($song->file_path, PATHINFO_FILENAME);
             Cloudinary::destroy($publicId, ['resource_type' => 'video']);
-            
+
             $this->songRepo->delete($song->id);
         });
     }
