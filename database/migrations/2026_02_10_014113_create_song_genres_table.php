@@ -9,7 +9,7 @@ return new class extends Migration {
     {
         Schema::create('song_genres', function (Blueprint $table) {
             $table->foreignUuid('song_id')->constrained('songs')->cascadeOnDelete();
-            $table->foreignId('genre_id')->constrained('genres')->cascadeOnDelete();
+            $table->foreignUuid('genre_id')->constrained('genres')->cascadeOnDelete();
             $table->primary(['song_id', 'genre_id']);
         });
     }

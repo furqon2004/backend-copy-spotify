@@ -2,11 +2,12 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 
 class Genre extends Model
 {
-    public $timestamps = false;
+    use HasUuids;
     protected $fillable = ['name', 'slug', 'color', 'image_url'];
 
     public function songs()

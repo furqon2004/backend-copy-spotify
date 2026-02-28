@@ -8,7 +8,7 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::create('content_reports', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
             $table->foreignUuid('reporter_id')->constrained('users')->cascadeOnDelete();
             $table->enum('target_type', ['SONG', 'PLAYLIST', 'USER']);
             $table->uuid('target_id');

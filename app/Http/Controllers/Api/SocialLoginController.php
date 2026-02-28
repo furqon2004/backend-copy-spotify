@@ -42,21 +42,18 @@ class SocialLoginController extends Controller
      * Menerima `code` dari provider, exchange ke user info,
      * lalu create/find user dan return Sanctum tokens.
      */
-    public function callback(Request $request, string $provider): JsonResponse
+    public function callback(Request $request, string $provider)
     {
         if (!in_array($provider, $this->allowedProviders)) {
-            return response()->json([
-                'message' => "Provider '{$provider}' tidak didukung."
-            ], 422);
+            return redirect(config('app.frontend_url', env('FRONTEND_URL', 'http://localhost:3000'))
+                . '/auth/callback?error=' . urlencode("Provider '{$provider}' tidak didukung."));
         }
 
         try {
             $socialUser = Socialite::driver($provider)->stateless()->user();
         } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Gagal autentikasi dengan ' . ucfirst($provider) . '.',
-                'error' => $e->getMessage()
-            ], 401);
+            return redirect(config('app.frontend_url', env('FRONTEND_URL', 'http://localhost:3000'))
+                . '/auth/callback?error=' . urlencode('Gagal autentikasi dengan ' . ucfirst($provider) . ': ' . $e->getMessage()));
         }
 
         return DB::transaction(function () use ($socialUser, $provider) {
@@ -103,21 +100,18 @@ class SocialLoginController extends Controller
             $accessToken = $user->createToken('access_token', ['*'], $expiration)->plainTextToken;
             $refreshToken = $user->createToken('refresh_token', ['issue-access-token'], now()->addMonths(6))->plainTextToken;
 
-            return response()->json([
+            $frontendUrl = config('app.frontend_url', env('FRONTEND_URL', 'http://localhost:3000'));
+
+            $params = http_build_query([
                 'access_token' => $accessToken,
                 'refresh_token' => $refreshToken,
                 'token_type' => 'Bearer',
                 'expires_at' => $expiration->toDateTimeString(),
                 'role' => $this->getUserRole($user),
-                'is_new_user' => $user->wasRecentlyCreated,
-                'user' => [
-                    'id' => $user->id,
-                    'username' => $user->username,
-                    'email' => $user->email,
-                    'full_name' => $user->full_name,
-                    'profile_image_url' => $user->profile_image_url,
-                ]
+                'is_new_user' => $user->wasRecentlyCreated ? '1' : '0',
             ]);
+
+            return redirect("{$frontendUrl}/auth/callback?{$params}");
         });
     }
 

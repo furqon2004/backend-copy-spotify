@@ -8,11 +8,11 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::create('playlist_items', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
             $table->foreignUuid('playlist_id')->index()->constrained('playlists')->cascadeOnDelete();
             $table->foreignUuid('song_id')->index()->constrained('songs')->cascadeOnDelete();
             $table->unsignedInteger('position');
-            $table->timestamp('added_at')->useCurrent()->index();
+            $table->timestamps();
         });
     }
 

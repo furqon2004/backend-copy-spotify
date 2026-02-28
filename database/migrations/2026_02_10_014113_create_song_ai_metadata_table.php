@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('song_ai_metadata', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
             $table->foreignUuid('song_id')->constrained('songs')->onDelete('cascade');
             $table->json('mood_tags')->nullable();
             $table->integer('bpm')->nullable();
