@@ -130,19 +130,6 @@ class SearchController extends Controller
             return response()->json(['message' => $result['message']], 404);
         }
 
-        if ($type === 'confirmation_required') {
-            return response()->json([
-                'requires_confirmation' => true,
-                'message' => $result['message'],
-                'matched_songs' => $result['matched_songs'],
-                'missing_songs' => $result['missing_songs'],
-                'matched_count' => $result['matched_count'],
-                'missing_count' => $result['missing_count'],
-                'playlist_name' => $result['playlist_name'],
-                'prompt' => $result['prompt'],
-            ], 200);
-        }
-
         if ($type === 'playlist_created') {
             $playlist = $result['playlist'];
             $response = [

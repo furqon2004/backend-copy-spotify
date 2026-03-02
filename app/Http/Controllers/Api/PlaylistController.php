@@ -88,10 +88,6 @@ class PlaylistController extends Controller
                 return response()->json(['message' => $result['message']], 404);
             }
 
-            if ($type === 'confirmation_required') {
-                return response()->json($result, 200);
-            }
-
             if ($type === 'playlist_created') {
                 $playlist = $result['playlist'];
                 // Ensure songs relation is loaded with required sub-relations

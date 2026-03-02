@@ -120,7 +120,7 @@ class SearchService
                 ->where('status', 'APPROVED')
                 ->where(function ($q) use ($matchedTitles) {
                     foreach ($matchedTitles as $title) {
-                        $q->orWhere('title', 'LIKE', '%' . $title . '%');
+                        $q->orWhere('title', 'LIKE', '%' . trim($title) . '%');
                     }
                 })
                 ->with(['artist', 'album'])
@@ -128,32 +128,13 @@ class SearchService
                 ->get();
         }
 
-        // Step 4: If there are missing songs and user hasn't confirmed, return confirmation
-        if (!empty($missingSongs) && !$force) {
-            return [
-                'type' => 'confirmation_required',
-                'requires_confirmation' => true,
-                'message' => 'Beberapa lagu yang cocok tidak tersedia di perpustakaan kami',
-                'matched_songs' => $matchedSongs->map(fn($s) => [
-                    'id' => $s->id,
-                    'title' => $s->title,
-                    'artist' => $s->artist->name ?? null,
-                ])->values(),
-                'missing_songs' => $missingSongs,
-                'matched_count' => $matchedSongs->count(),
-                'missing_count' => count($missingSongs),
-                'playlist_name' => $playlistName,
-                'prompt' => $prompt,
-            ];
-        }
-
-        // Step 5: If no matched songs at all, try fallback with keywords
+        // Step 4: If no matched songs, try fallback with keywords
         if ($matchedSongs->isEmpty()) {
             Log::info('No matched songs found, trying keyword fallback');
             $matchedSongs = $this->fallbackSearch($prompt);
         }
 
-        // Step 6: Still nothing? Get random songs as last resort
+        // Step 5: Still nothing? Get random songs as last resort
         if ($matchedSongs->isEmpty()) {
             Log::info('Keyword fallback also empty, using random songs');
             $matchedSongs = Song::where('status', 'APPROVED')->inRandomOrder()->with(['artist'])->limit(5)->get();
@@ -163,7 +144,7 @@ class SearchService
             return ['type' => 'error', 'message' => 'Tidak ada lagu yang bisa ditemukan'];
         }
 
-        // Step 7: Create the playlist
+        // Step 6: Create the playlist
         $playlist = DB::transaction(function () use ($userId, $matchedSongs, $playlistName, $prompt) {
             $playlist = Playlist::create([
                 'id' => Str::uuid(),
@@ -185,7 +166,7 @@ class SearchService
             return $playlist->load('songs.artist');
         });
 
-        // Step 8: Record daily usage
+        // Step 7: Record daily usage
         AiPlaylistUsage::recordUsage($userId, $prompt);
 
         return [
