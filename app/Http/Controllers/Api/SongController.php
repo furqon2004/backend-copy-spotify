@@ -34,7 +34,7 @@ class SongController extends Controller
 
     public function show(string $id): JsonResponse
     {
-        $song = $this->songRepo->findById($id, ['*'], ['artist:id,name,slug', 'album:id,title,cover_image_url', 'lyric']);
+        $song = $this->songRepo->findById($id, ['*'], ['artist:id,name,slug', 'album:id,title,cover_image_url', 'lyric', 'genres:id,name']);
         if (!$song) {
             return response()->json(['message' => 'Song not found'], 404);
         }

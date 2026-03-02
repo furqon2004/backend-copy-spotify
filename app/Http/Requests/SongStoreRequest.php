@@ -1,4 +1,4 @@
-<?php 
+<?php
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
@@ -19,6 +19,11 @@ class SongStoreRequest extends FormRequest
             'genre_ids' => ['required', 'array', 'min:1'],
             'genre_ids.*' => ['exists:genres,id'],
             'cover_url' => ['nullable', 'string', 'url', 'max:500'],
+            'cover' => [
+                'nullable',
+                File::types(['jpg', 'jpeg', 'png', 'webp'])
+                    ->max('5mb')
+            ],
             'audio' => [
                 $this->isMethod('post') ? 'required' : 'nullable',
                 File::types(['mp3', 'wav'])

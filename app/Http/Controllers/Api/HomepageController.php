@@ -19,13 +19,15 @@ class HomepageController extends Controller
      */
     public function browse(): JsonResponse
     {
-        $popularSongs = Song::select(['id', 'artist_id', 'album_id', 'title', 'slug', 'cover_url', 'duration_seconds', 'stream_count'])
+        $popularSongs = Song::where('status', 'APPROVED')
+            ->select(['id', 'artist_id', 'album_id', 'title', 'slug', 'cover_url', 'duration_seconds', 'stream_count'])
             ->with(['artist:id,name,slug', 'album:id,title,cover_image_url'])
             ->orderBy('stream_count', 'desc')
             ->limit(10)
             ->get();
 
-        $latestSongs = Song::select(['id', 'artist_id', 'album_id', 'title', 'slug', 'cover_url', 'duration_seconds', 'stream_count'])
+        $latestSongs = Song::where('status', 'APPROVED')
+            ->select(['id', 'artist_id', 'album_id', 'title', 'slug', 'cover_url', 'duration_seconds', 'stream_count'])
             ->with(['artist:id,name,slug', 'album:id,title,cover_image_url'])
             ->latest()
             ->limit(10)
@@ -63,6 +65,7 @@ class HomepageController extends Controller
         $recentSongs = collect();
         if ($recentSongIds->isNotEmpty()) {
             $recentSongs = Song::whereIn('id', $recentSongIds)
+                ->where('status', 'APPROVED')
                 ->select(['id', 'artist_id', 'album_id', 'title', 'slug', 'cover_url', 'duration_seconds', 'stream_count', 'file_path'])
                 ->with(['artist:id,name,slug', 'album:id,title,cover_image_url'])
                 ->get()
@@ -73,14 +76,16 @@ class HomepageController extends Controller
         }
 
         // 2. Latest songs
-        $latestSongs = Song::select(['id', 'artist_id', 'album_id', 'title', 'slug', 'cover_url', 'duration_seconds', 'stream_count', 'file_path'])
+        $latestSongs = Song::where('status', 'APPROVED')
+            ->select(['id', 'artist_id', 'album_id', 'title', 'slug', 'cover_url', 'duration_seconds', 'stream_count', 'file_path'])
             ->with(['artist:id,name,slug', 'album:id,title,cover_image_url'])
             ->latest()
             ->limit(10)
             ->get();
 
         // 3. Popular songs
-        $popularSongs = Song::select(['id', 'artist_id', 'album_id', 'title', 'slug', 'cover_url', 'duration_seconds', 'stream_count', 'file_path'])
+        $popularSongs = Song::where('status', 'APPROVED')
+            ->select(['id', 'artist_id', 'album_id', 'title', 'slug', 'cover_url', 'duration_seconds', 'stream_count', 'file_path'])
             ->with(['artist:id,name,slug', 'album:id,title,cover_image_url'])
             ->orderBy('stream_count', 'desc')
             ->limit(10)

@@ -203,7 +203,7 @@ class SearchService
     {
         $songs = Song::query()
             ->where('status', 'APPROVED')
-            ->select(['id', 'title', 'artist_id', 'status'])
+            ->select(['id', 'title', 'artist_id'])
             ->with([
                 'artist:id,name',
                 'lyric:id,song_id,content',
