@@ -17,7 +17,7 @@ class SearchController extends Controller
 
     public function index(Request $request)
     {
-        $request->validate(['q' => 'required|string|min:1']);
+        $request->validate(['q' => 'required|string|min:2']);
 
         $query = $request->query('q');
         $type = $request->query('type'); // null (default) | 'mood'
@@ -101,79 +101,4 @@ class SearchController extends Controller
         ]);
     }
 
-    public function generatePlaylist(Request $request)
-    {
-        $request->validate(['prompt' => 'required|string|min:3']);
-
-        // Check daily limit (1x per day)
-        if ($this->searchService->hasReachedDailyLimit(auth()->id())) {
-            return response()->json([
-                'message' => 'Anda sudah menggunakan AI playlist hari ini. Coba lagi besok.',
-                'next_available_at' => now()->addDay()->startOfDay()->toIso8601String(),
-            ], 429);
-        }
-
-        // Validate prompt dengan AI
-        $validation = $this->searchService->validatePrompt($request->prompt);
-
-        if (!$validation['valid']) {
-            return response()->json([
-                'message' => 'Prompt tidak valid untuk generate playlist',
-                'error' => $validation['reason'] ?? 'Prompt terlalu vague atau tidak berhubungan dengan musik',
-                'examples' => $validation['examples'] ?? [
-                    'lagu upbeat untuk workout',
-                    'lagu sad romantic untuk patah hati',
-                    'lagu chill jazz untuk belajar',
-                    'EDM energik untuk party'
-                ],
-                'suggestion' => 'Gunakan prompt yang lebih spesifik dan berhubungan dengan musik'
-            ], 422);
-        }
-
-        $force = $request->boolean('force', false);
-
-        $result = $this->searchService->generatePlaylistFromPrompt(
-            auth()->id(),
-            $request->prompt,
-            $force
-        );
-
-        if (!$result) {
-            return response()->json(['message' => 'Could not find enough songs for this prompt'], 404);
-        }
-
-        // Handle different result types
-        $type = $result['type'] ?? 'unknown';
-
-        if ($type === 'error') {
-            return response()->json(['message' => $result['message']], 404);
-        }
-
-        if ($type === 'playlist_created') {
-            $playlist = $result['playlist'];
-            $response = [
-                'message' => 'AI telah membuat playlist dengan ' . $playlist->songs->count() . ' lagu!',
-                'data' => $playlist,
-            ];
-
-            if (!empty($result['missing_songs'])) {
-                $response['missing_songs'] = $result['missing_songs'];
-                $response['note'] = 'Beberapa lagu yang disarankan tidak tersedia di perpustakaan kami';
-            }
-
-            return response()->json($response, 201);
-        }
-
-        return response()->json(['message' => 'Unexpected error'], 500);
-    }
-
-    /**
-     * Check remaining AI playlist usage for today.
-     */
-    public function checkRemainingUsage()
-    {
-        return response()->json(
-            $this->searchService->getRemainingUsage(auth()->id())
-        );
-    }
 }
