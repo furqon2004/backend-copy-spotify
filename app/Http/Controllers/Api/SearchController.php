@@ -82,6 +82,25 @@ class SearchController extends Controller
         ]);
     }
 
+    /**
+     * AI Search: menampilkan lagu berdasarkan deskripsi/mood (GET, tanpa membuat playlist).
+     */
+    public function aiSearch(Request $request)
+    {
+        $request->validate(['q' => 'required|string|min:3']);
+
+        $query = $request->query('q');
+
+        $aiResult = $this->searchService->aiSmartSearch($query);
+
+        return response()->json([
+            'query_type' => $aiResult['query_type'],
+            'ai_reason' => $aiResult['ai_reason'],
+            'songs' => SongResource::collection($aiResult['songs']),
+            'total' => $aiResult['total'],
+        ]);
+    }
+
     public function generatePlaylist(Request $request)
     {
         $request->validate(['prompt' => 'required|string|min:3']);
