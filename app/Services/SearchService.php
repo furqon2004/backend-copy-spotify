@@ -128,16 +128,28 @@ class SearchService
                 ->get();
         }
 
+        $minSongs = 8;
+
         // Step 4: If no matched songs, try fallback with keywords
         if ($matchedSongs->isEmpty()) {
             Log::info('No matched songs found, trying keyword fallback');
             $matchedSongs = $this->fallbackSearch($prompt);
         }
 
-        // Step 5: Still nothing? Get random songs as last resort
-        if ($matchedSongs->isEmpty()) {
-            Log::info('Keyword fallback also empty, using random songs');
-            $matchedSongs = Song::where('status', 'APPROVED')->inRandomOrder()->with(['artist'])->limit(5)->get();
+        // Step 5: Top up with random songs if below minimum
+        if ($matchedSongs->count() < $minSongs) {
+            $existingIds = $matchedSongs->pluck('id')->toArray();
+            $needed = $minSongs - $matchedSongs->count();
+            Log::info("Topping up playlist: have {$matchedSongs->count()}, need {$needed} more");
+
+            $extraSongs = Song::where('status', 'APPROVED')
+                ->whereNotIn('id', $existingIds)
+                ->inRandomOrder()
+                ->with(['artist', 'album'])
+                ->limit($needed)
+                ->get();
+
+            $matchedSongs = $matchedSongs->concat($extraSongs);
         }
 
         if ($matchedSongs->isEmpty()) {
@@ -386,13 +398,17 @@ $songListText
 TUGAS:
 1. Pilih lagu-lagu yang paling COCOK dengan deskripsi \"$query\" berdasarkan judul, genre, lirik, dan mood/suasana.
 2. Urutkan dari yang paling relevan.
-3. Pilih maksimal 15 lagu.
+3. Pilih minimal 8 lagu dan maksimal 12 lagu.
+4. USAHAKAN pilih 10 lagu yang paling cocok.
+5. matched_titles HARUS berisi judul lagu yang PERSIS SAMA seperti di daftar di atas.
 
 Return ONLY JSON:
 {
   \"matched_titles\": [\"judul lagu persis dari daftar\"],
   \"reason\": \"penjelasan singkat kenapa lagu-lagu ini cocok dengan deskripsi user\"
 }";
+
+        $minSongs = 8;
 
         try {
             $response = Http::timeout(30)->withHeaders(['Content-Type' => 'application/json'])
@@ -415,20 +431,37 @@ Return ONLY JSON:
             $data = json_decode($text, true);
             $matchedTitles = $data['matched_titles'] ?? [];
 
-            if (empty($matchedTitles)) {
-                return $this->fallbackSearch($query);
+            $songs = collect();
+
+            if (!empty($matchedTitles)) {
+                $songs = Song::query()
+                    ->where('status', 'APPROVED')
+                    ->where(function ($q) use ($matchedTitles) {
+                        foreach ($matchedTitles as $title) {
+                            $q->orWhere('title', 'LIKE', '%' . trim($title) . '%');
+                        }
+                    })
+                    ->with(['artist', 'album', 'aiMetadata'])
+                    ->limit(20)
+                    ->get();
             }
 
-            return Song::query()
-                ->where('status', 'APPROVED')
-                ->where(function ($q) use ($matchedTitles) {
-                    foreach ($matchedTitles as $title) {
-                        $q->orWhere('title', 'LIKE', '%' . $title . '%');
-                    }
-                })
-                ->with(['artist', 'album', 'aiMetadata'])
-                ->limit(20)
-                ->get();
+            // Top up with random songs if below minimum
+            if ($songs->count() < $minSongs) {
+                $existingIds = $songs->pluck('id')->toArray();
+                $needed = $minSongs - $songs->count();
+
+                $extraSongs = Song::where('status', 'APPROVED')
+                    ->whereNotIn('id', $existingIds)
+                    ->inRandomOrder()
+                    ->with(['artist', 'album', 'aiMetadata'])
+                    ->limit($needed)
+                    ->get();
+
+                $songs = $songs->concat($extraSongs);
+            }
+
+            return $songs;
         } catch (\Exception $e) {
             Log::warning('Mood search failed: ' . $e->getMessage());
             return $this->fallbackSearch($query);
@@ -544,7 +577,8 @@ TUGAS:
 PENTING:
 - matched_titles HARUS berisi judul lagu yang PERSIS SAMA seperti di daftar di atas
 - missing_songs berisi judul lagu terkenal yang cocok tapi tidak ada di perpustakaan
-- Pilih minimal 5 lagu jika memungkinkan, maksimal 15
+- Pilih minimal 8 lagu dan maksimal 12 lagu
+- USAHAKAN pilih 10 lagu yang paling cocok
 
 Return ONLY JSON dengan format:
 {
