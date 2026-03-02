@@ -93,7 +93,24 @@ class PlaylistController extends Controller
             }
 
             if ($type === 'playlist_created') {
-                return response()->json($result['playlist'], 201);
+                $playlist = $result['playlist'];
+                // Ensure songs relation is loaded with required sub-relations
+                $playlist->load(['songs' => function ($q) {
+                    $q->with('artist:id,name,slug', 'album:id,title,cover_image_url')
+                      ->orderBy('playlist_items.position');
+                }]);
+
+                $response = [
+                    'message' => 'AI telah membuat playlist dengan ' . $playlist->songs->count() . ' lagu!',
+                    'data' => new \App\Http\Resources\PlaylistResource($playlist),
+                ];
+
+                if (!empty($result['missing_songs'])) {
+                    $response['missing_songs'] = $result['missing_songs'];
+                    $response['note'] = 'Beberapa lagu yang disarankan tidak tersedia di perpustakaan kami';
+                }
+
+                return response()->json($response, 201);
             }
 
             return response()->json(['message' => 'Unexpected error'], 500);

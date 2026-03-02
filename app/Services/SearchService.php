@@ -63,6 +63,7 @@ class SearchService
                     return collect();
 
                 return Song::query()
+                    ->where('status', 'APPROVED')
                     ->where(function ($q) use ($keywords) {
                         foreach ($keywords as $word) {
                             $q->orWhere('title', 'LIKE', "%{$word}%");
@@ -116,6 +117,7 @@ class SearchService
         $matchedSongs = collect();
         if (!empty($matchedTitles)) {
             $matchedSongs = Song::query()
+                ->where('status', 'APPROVED')
                 ->where(function ($q) use ($matchedTitles) {
                     foreach ($matchedTitles as $title) {
                         $q->orWhere('title', 'LIKE', '%' . $title . '%');
@@ -154,7 +156,7 @@ class SearchService
         // Step 6: Still nothing? Get random songs as last resort
         if ($matchedSongs->isEmpty()) {
             Log::info('Keyword fallback also empty, using random songs');
-            $matchedSongs = Song::inRandomOrder()->with(['artist'])->limit(5)->get();
+            $matchedSongs = Song::where('status', 'APPROVED')->inRandomOrder()->with(['artist'])->limit(5)->get();
         }
 
         if ($matchedSongs->isEmpty()) {
@@ -200,7 +202,8 @@ class SearchService
     private function gatherSongDataForAi(): array
     {
         $songs = Song::query()
-            ->select(['id', 'title', 'artist_id'])
+            ->where('status', 'APPROVED')
+            ->select(['id', 'title', 'artist_id', 'status'])
             ->with([
                 'artist:id,name',
                 'lyric:id,song_id,content',
@@ -299,8 +302,11 @@ class SearchService
 
                     case 'title':
                     default:
-                        $songs = Song::where('title', 'LIKE', "%{$query}%")
-                            ->orWhereHas('artist', fn($q) => $q->where('name', 'LIKE', "%{$query}%"))
+                        $songs = Song::where('status', 'APPROVED')
+                            ->where(function ($q) use ($query) {
+                                $q->where('title', 'LIKE', "%{$query}%")
+                                  ->orWhereHas('artist', fn($aq) => $aq->where('name', 'LIKE', "%{$query}%"));
+                            })
                             ->with(['artist', 'album', 'aiMetadata'])
                             ->limit(20)
                             ->get();
@@ -321,8 +327,11 @@ class SearchService
                 Log::warning('AI Smart Search failed: ' . $e->getMessage());
 
                 // Fallback to normal title search
-                $songs = Song::where('title', 'LIKE', "%{$query}%")
-                    ->orWhereHas('artist', fn($q) => $q->where('name', 'LIKE', "%{$query}%"))
+                $songs = Song::where('status', 'APPROVED')
+                    ->where(function ($q) use ($query) {
+                        $q->where('title', 'LIKE', "%{$query}%")
+                          ->orWhereHas('artist', fn($aq) => $aq->where('name', 'LIKE', "%{$query}%"));
+                    })
                     ->with(['artist', 'album'])
                     ->limit(20)
                     ->get();
@@ -430,6 +439,7 @@ Return ONLY JSON:
             }
 
             return Song::query()
+                ->where('status', 'APPROVED')
                 ->where(function ($q) use ($matchedTitles) {
                     foreach ($matchedTitles as $title) {
                         $q->orWhere('title', 'LIKE', '%' . $title . '%');
@@ -453,6 +463,7 @@ Return ONLY JSON:
 
         // Search in lyrics content
         $songIds = \App\Models\Lyric::query()
+            ->whereHas('song', fn($q) => $q->where('status', 'APPROVED'))
             ->where(function ($q) use ($searchTerms, $query) {
                 // Try exact phrase match first
                 $q->where('content', 'LIKE', '%' . $query . '%');
@@ -468,13 +479,15 @@ Return ONLY JSON:
 
         if ($songIds->isEmpty()) {
             // Fallback: also try title search
-            return Song::where('title', 'LIKE', "%{$query}%")
+            return Song::where('status', 'APPROVED')
+                ->where('title', 'LIKE', "%{$query}%")
                 ->with(['artist', 'album', 'aiMetadata', 'lyric'])
                 ->limit(10)
                 ->get();
         }
 
-        return Song::whereIn('id', $songIds)
+        return Song::where('status', 'APPROVED')
+            ->whereIn('id', $songIds)
             ->with(['artist', 'album', 'aiMetadata', 'lyric'])
             ->limit(20)
             ->get();
@@ -488,6 +501,7 @@ Return ONLY JSON:
         $words = explode(' ', $prompt);
 
         return Song::query()
+            ->where('status', 'APPROVED')
             ->where(function ($q) use ($words) {
                 foreach ($words as $word) {
                     if (strlen($word) >= 3) {
