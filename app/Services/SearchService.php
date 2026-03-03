@@ -623,13 +623,17 @@ Return ONLY JSON dengan format:
 
 Valid prompts are:
 - Music-related (songs, playlists, genres, moods)
-- Specific enough (describes mood, genre, activity, or vibe)
-- Examples: 'upbeat workout songs', 'sad romantic ballads', 'chill jazz for studying'
+- Describes mood, genre, activity, vibe, or context
+- Mentions specific artist names or combinations of artists
+- Requests combining songs from multiple artists
+- Examples: 'upbeat workout songs', 'sad romantic ballads', 'chill jazz for studying', 'playlist lagu Oasis dan Hindia', 'lagu Tulus untuk santai', 'campuran lagu Coldplay dan Radiohead'
 
 Invalid prompts are:
-- Too vague: 'music', 'songs', 'good'
+- Too vague with NO context: just 'music', 'songs', 'good' (single generic word only)
 - Off-topic: 'how to cook', 'weather', 'programming tips'
 - Nonsensical: 'asdfgh', random characters
+
+IMPORTANT: If the prompt mentions ANY specific artist name(s), it is ALWAYS valid even without mood/activity context. Artist names alone are sufficient.
 
 Return JSON with this structure:
 {
