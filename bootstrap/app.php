@@ -17,6 +17,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        // Trust Hostinger's reverse proxy for proper HTTPS detection
+        $middleware->trustProxies(at: '*');
+
         $middleware->api(prepend: [
             \Illuminate\Http\Middleware\HandleCors::class,
             ForceJsonResponse::class,
