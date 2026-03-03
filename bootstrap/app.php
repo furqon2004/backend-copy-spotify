@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\CorsMiddleware;
 use App\Http\Middleware\ForceJsonResponse;
 use App\Http\Middleware\AdminMiddleware;
 use App\Http\Middleware\ArtistMiddleware;
@@ -20,8 +21,10 @@ return Application::configure(basePath: dirname(__DIR__))
         // Trust Hostinger's reverse proxy for proper HTTPS detection
         $middleware->trustProxies(at: '*');
 
+        // Register CORS middleware globally so it handles preflight OPTIONS requests
+        $middleware->prepend(CorsMiddleware::class);
+
         $middleware->api(prepend: [
-            \Illuminate\Http\Middleware\HandleCors::class,
             ForceJsonResponse::class,
         ]);
         $middleware->alias([
