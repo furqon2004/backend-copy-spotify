@@ -41,6 +41,9 @@ Route::get('/browse', [HomepageController::class, 'browse']);
 // Public artist profile
 Route::get('/artists/{slug}', [ArtistController::class, 'show']);
 
+// Public playlist detail (anyone can view public playlists)
+Route::get('/playlists/{id}', [PlaylistController::class, 'show']);
+
 // Signed URL audio streaming (no auth, signature is the auth)
 Route::get('/audio-stream/{id}', [StreamController::class, 'streamAudio'])
     ->name('stream.audio');
@@ -61,9 +64,9 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // Search
-    Route::get('/search', [SearchController::class , 'index']);
-    Route::get('/search/ai', [SearchController::class , 'aiSearch']);
-    Route::post('/search/ai-playlist', [SearchController::class , 'aiPlaylist']);
+    Route::get('/search', [SearchController::class, 'index']);
+    Route::get('/search/ai', [SearchController::class, 'aiSearch']);
+    Route::post('/search/ai-playlist', [SearchController::class, 'aiPlaylist']);
 
     // Genres
     Route::prefix('genres')->group(function () {
@@ -87,11 +90,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/{id}/request-link', [StreamController::class, 'getSecureLink']);
     });
 
-    // Playlists
+    // Playlists (show is public, see above)
     Route::prefix('playlists')->group(function () {
         Route::get('/', [PlaylistController::class, 'index']);
         Route::post('/', [PlaylistController::class, 'store']);
-        Route::get('/{id}', [PlaylistController::class, 'show']);
         Route::put('/{id}', [PlaylistController::class, 'update']);
         Route::delete('/{id}', [PlaylistController::class, 'destroy']);
         Route::post('/{id}/add-song', [PlaylistController::class, 'addSong']);

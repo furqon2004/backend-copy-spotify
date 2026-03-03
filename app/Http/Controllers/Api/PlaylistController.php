@@ -47,6 +47,14 @@ class PlaylistController extends Controller
             }
         ])->findOrFail($id);
 
+        // If playlist is private, only the owner can view it
+        if (!$playlist->is_public) {
+            $user = auth('sanctum')->user();
+            if (!$user || $user->id !== $playlist->user_id) {
+                return response()->json(['message' => 'This playlist is private.'], 403);
+            }
+        }
+
         return response()->json($playlist);
     }
 
@@ -91,10 +99,12 @@ class PlaylistController extends Controller
             if ($type === 'playlist_created') {
                 $playlist = $result['playlist'];
                 // Ensure songs relation is loaded with required sub-relations
-                $playlist->load(['songs' => function ($q) {
-                    $q->with('artist:id,name,slug', 'album:id,title,cover_image_url')
-                      ->orderBy('playlist_items.position');
-                }]);
+                $playlist->load([
+                    'songs' => function ($q) {
+                        $q->with('artist:id,name,slug', 'album:id,title,cover_image_url')
+                            ->orderBy('playlist_items.position');
+                    }
+                ]);
 
                 $response = [
                     'message' => 'AI telah membuat playlist dengan ' . $playlist->songs->count() . ' lagu!',
