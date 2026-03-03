@@ -24,7 +24,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin' => AdminMiddleware::class,
             'artist' => ArtistMiddleware::class,
         ]);
-        $middleware->redirectGuestsTo(fn () => '/login');
+        $middleware->redirectGuestsTo(fn() => '/login');
     })
     ->withSchedule(function (Schedule $schedule) {
         // Menjalankan pembersihan token Sanctum yang expired setiap jam
@@ -33,7 +33,23 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withExceptions(function (Exceptions $exceptions) {
         $exceptions->render(function (AuthenticationException $e, $request) {
             if ($request->expectsJson() || $request->is('api/*')) {
-                return response()->json(['message' => 'Unauthenticated.'], 401);
+                $origin = $request->header('Origin');
+                $allowedOrigins = config('cors.allowed_origins', ['*']);
+
+                // Check if origin is allowed
+                $corsOrigin = in_array('*', $allowedOrigins)
+                    ? '*'
+                    : (in_array($origin, $allowedOrigins) ? $origin : null);
+
+                $response = response()->json(['message' => 'Unauthenticated.'], 401);
+
+                if ($corsOrigin) {
+                    $response->headers->set('Access-Control-Allow-Origin', $corsOrigin);
+                    $response->headers->set('Access-Control-Allow-Credentials', 'true');
+                    $response->headers->set('Access-Control-Allow-Headers', '*');
+                }
+
+                return $response;
             }
             return redirect('/login');
         });
