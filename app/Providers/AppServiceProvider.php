@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\URL;
 use Dedoc\Scramble\Scramble;
 use Dedoc\Scramble\Generator;
 use Dedoc\Scramble\Support\Generator\OpenApi;
@@ -36,6 +37,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Force HTTPS in production (Hostinger uses reverse proxy)
+        if ($this->app->environment('production')) {
+            URL::forceScheme('https');
+        }
         // Konfigurasi Scramble: filter hanya route api
         Scramble::routes(function (\Illuminate\Routing\Route $route) {
             return str_starts_with($route->uri, 'api/');
