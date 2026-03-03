@@ -18,7 +18,7 @@ class SearchService
      */
     public function hasReachedDailyLimit(string $userId): bool
     {
-        return AiPlaylistUsage::hasUsedToday($userId);
+        return AiPlaylistUsage::hasReachedDailyLimit($userId);
     }
 
     /**
@@ -26,11 +26,12 @@ class SearchService
      */
     public function getRemainingUsage(string $userId): array
     {
-        $usedToday = AiPlaylistUsage::hasUsedToday($userId);
+        $usedToday = AiPlaylistUsage::countToday($userId);
+        $limit = AiPlaylistUsage::DAILY_LIMIT;
 
         return [
-            'remaining' => $usedToday ? 0 : 1,
-            'limit' => 1,
+            'remaining' => $limit - $usedToday,
+            'limit' => $limit,
             'used_today' => $usedToday,
             'next_reset_at' => now()->addDay()->startOfDay()->toIso8601String(),
         ];
@@ -295,17 +296,40 @@ class SearchService
 
                     case 'title':
                     default:
+                        // Pecah query jadi kata-kata untuk pencarian lebih luas
+                        $words = array_filter(explode(' ', $query), fn($w) => mb_strlen($w) >= 2);
+
                         $songs = Song::where('status', 'APPROVED')
-                            ->where(function ($q) use ($query) {
+                            ->where(function ($q) use ($query, $words) {
                                 $q->where('title', 'LIKE', "%{$query}%")
-                                  ->orWhereHas('artist', fn($aq) => $aq->where('name', 'LIKE', "%{$query}%"));
+                                  ->orWhereHas('artist', fn($aq) => $aq->where('name', 'LIKE', "%{$query}%"))
+                                  ->orWhereHas('genres', fn($gq) => $gq->where('name', 'LIKE', "%{$query}%"));
+
+                                // Per-word broader matching
+                                foreach ($words as $word) {
+                                    $q->orWhere('title', 'LIKE', "%{$word}%")
+                                      ->orWhereHas('artist', fn($aq) => $aq->where('name', 'LIKE', "%{$word}%"))
+                                      ->orWhereHas('genres', fn($gq) => $gq->where('name', 'LIKE', "%{$word}%"));
+                                }
                             })
                             ->with(['artist', 'album', 'aiMetadata'])
                             ->limit(20)
                             ->get();
-                        $queryType = 'title';
-                        if (empty($aiReason)) {
-                            $aiReason = 'Menampilkan hasil pencarian berdasarkan judul lagu atau nama artis.';
+
+                        // Jika masih kosong, fallback ke lagu populer/random
+                        if ($songs->isEmpty()) {
+                            $songs = Song::where('status', 'APPROVED')
+                                ->with(['artist', 'album', 'aiMetadata'])
+                                ->inRandomOrder()
+                                ->limit(15)
+                                ->get();
+                            $queryType = 'recommendation';
+                            $aiReason = 'Tidak ditemukan hasil spesifik untuk "' . $query . '", menampilkan rekomendasi lagu untukmu.';
+                        } else {
+                            $queryType = 'title';
+                            if (empty($aiReason)) {
+                                $aiReason = 'Menampilkan hasil pencarian berdasarkan judul lagu atau nama artis.';
+                            }
                         }
                         break;
                 }
@@ -534,9 +558,13 @@ Return ONLY JSON:
         return "Analisis query pencarian musik berikut: \"$query\"
 
 Tentukan tipe pencarian:
-- \"mood\" — jika user mendeskripsikan suasana, aktivitas, atau konteks (contoh: \"lagu enak untuk hujan\", \"lagu sedih malam hari\", \"musik santai untuk kerja\", \"lagu semangat pagi\")
+- \"mood\" — jika user mendeskripsikan suasana, aktivitas, konteks, ATAU menggunakan kata sifat/deskriptif tentang musik (contoh: \"lagu enak untuk hujan\", \"lagu sedih malam hari\", \"musik santai untuk kerja\", \"lagu semangat pagi\", \"lagu hits\", \"lagu populer\", \"lagu terbaru\", \"lagu enak\", \"lagu galau\", \"lagu viral\", \"lagu indo terbaik\", \"top songs\", \"best music\", \"trending songs\", \"chill vibes\")
 - \"lyric\" — jika user mengetik kutipan lirik lagu atau potongan kata-kata dari lagu (contoh: \"terlalu banyak yang ku mau\", \"we will we will rock you\", \"cause baby you're a firework\")
-- \"title\" — jika user mengetik judul lagu atau nama artis secara langsung (contoh: \"Bohemian Rhapsody\", \"Tulus\", \"Adele Hello\")
+- \"title\" — HANYA jika user mengetik judul lagu spesifik atau nama artis secara langsung dan jelas (contoh: \"Bohemian Rhapsody\", \"Tulus\", \"Adele Hello\", \"Hindia\")
+
+PENTING:
+- Jika query mengandung kata deskriptif seperti \"hits\", \"populer\", \"terbaru\", \"enak\", \"galau\", \"viral\", \"best\", \"top\", \"trending\", \"chill\", \"terbaik\", \"keren\", \"bagus\", \"seru\", \"asik\" → SELALU klasifikasi sebagai \"mood\"
+- Jika ragu antara mood dan title, pilih \"mood\" agar pencarian lebih luas
 
 Berikan juga:
 - keywords: kata kunci penting dari query untuk pencarian
@@ -622,13 +650,17 @@ Return ONLY JSON dengan format:
 
 Valid prompts are:
 - Music-related (songs, playlists, genres, moods)
-- Specific enough (describes mood, genre, activity, or vibe)
-- Examples: 'upbeat workout songs', 'sad romantic ballads', 'chill jazz for studying'
+- Describes mood, genre, activity, vibe, or context
+- Mentions specific artist names or combinations of artists
+- Requests combining songs from multiple artists
+- Examples: 'upbeat workout songs', 'sad romantic ballads', 'chill jazz for studying', 'playlist lagu Oasis dan Hindia', 'lagu Tulus untuk santai', 'campuran lagu Coldplay dan Radiohead'
 
 Invalid prompts are:
-- Too vague: 'music', 'songs', 'good'
+- Too vague with NO context: just 'music', 'songs', 'good' (single generic word only)
 - Off-topic: 'how to cook', 'weather', 'programming tips'
 - Nonsensical: 'asdfgh', random characters
+
+IMPORTANT: If the prompt mentions ANY specific artist name(s), it is ALWAYS valid even without mood/activity context. Artist names alone are sufficient.
 
 Return JSON with this structure:
 {

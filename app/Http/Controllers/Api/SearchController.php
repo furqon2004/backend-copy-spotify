@@ -39,37 +39,104 @@ class SearchController extends Controller
 
         // ── Default search: langsung dari database (hemat token) ─────
 
-        // Songs: cari berdasarkan judul ATAU lirik ATAU nama artis
+        // Pecah query jadi kata-kata individual untuk pencarian lebih luas
+        $words = array_filter(explode(' ', $query), fn($w) => mb_strlen($w) >= 2);
+
+        // Songs: cari berdasarkan judul ATAU lirik ATAU nama artis ATAU genre
         $songs = \App\Models\Song::where('status', 'APPROVED')
-            ->where(function ($q) use ($query) {
+            ->where(function ($q) use ($query, $words) {
+                // Exact phrase match (prioritas tinggi)
                 $q->where('title', 'LIKE', "%{$query}%")
                   ->orWhereHas('artist', fn($aq) => $aq->where('name', 'LIKE', "%{$query}%"))
-                  ->orWhereHas('lyric', fn($lq) => $lq->where('content', 'LIKE', "%{$query}%"));
+                  ->orWhereHas('lyric', fn($lq) => $lq->where('content', 'LIKE', "%{$query}%"))
+                  ->orWhereHas('genres', fn($gq) => $gq->where('name', 'LIKE', "%{$query}%"));
+
+                // Per-word match (pencarian lebih luas)
+                foreach ($words as $word) {
+                    $q->orWhere('title', 'LIKE', "%{$word}%")
+                      ->orWhereHas('artist', fn($aq) => $aq->where('name', 'LIKE', "%{$word}%"))
+                      ->orWhereHas('genres', fn($gq) => $gq->where('name', 'LIKE', "%{$word}%"));
+                }
             })
             ->with(['artist:id,name,slug', 'album:id,title,cover_image_url'])
             ->limit(20)
             ->get();
 
+        // ── Auto-escalate ke AI search jika tidak ada hasil ─────
+        if ($songs->isEmpty()) {
+            $aiResult = $this->searchService->aiSmartSearch($query);
+
+            // Artists, playlists, podcasts, genres tetap dicari per-word
+            $artists = \App\Models\Artist::where(function ($q) use ($query, $words) {
+                $q->where('name', 'LIKE', "%{$query}%");
+                foreach ($words as $w) {
+                    $q->orWhere('name', 'LIKE', "%{$w}%");
+                }
+            })->limit(10)->get();
+
+            $playlists = \App\Models\Playlist::where(function ($q) use ($query, $words) {
+                $q->where('name', 'LIKE', "%{$query}%");
+                foreach ($words as $w) {
+                    $q->orWhere('name', 'LIKE', "%{$w}%");
+                }
+            })->where('is_public', true)->limit(10)->get();
+
+            $podcasts = \App\Models\Podcast::where(function ($q) use ($query, $words) {
+                $q->where('title', 'LIKE', "%{$query}%");
+                foreach ($words as $w) {
+                    $q->orWhere('title', 'LIKE', "%{$w}%");
+                }
+            })->limit(10)->get();
+
+            $genres = \App\Models\Genre::where(function ($q) use ($query, $words) {
+                $q->where('name', 'LIKE', "%{$query}%");
+                foreach ($words as $w) {
+                    $q->orWhere('name', 'LIKE', "%{$w}%");
+                }
+            })->limit(10)->get();
+
+            return response()->json([
+                'query_type' => $aiResult['query_type'],
+                'ai_reason' => $aiResult['ai_reason'],
+                'songs' => SongResource::collection($aiResult['songs']),
+                'artists' => $artists,
+                'playlists' => $playlists,
+                'podcasts' => $podcasts,
+                'genres' => $genres,
+            ]);
+        }
+
         // Artists
-        $artists = \App\Models\Artist::where('name', 'LIKE', "%{$query}%")
-            ->limit(10)
-            ->get();
+        $artists = \App\Models\Artist::where(function ($q) use ($query, $words) {
+            $q->where('name', 'LIKE', "%{$query}%");
+            foreach ($words as $w) {
+                $q->orWhere('name', 'LIKE', "%{$w}%");
+            }
+        })->limit(10)->get();
 
         // Playlists (Public only)
-        $playlists = \App\Models\Playlist::where('name', 'LIKE', "%{$query}%")
-            ->where('is_public', true)
-            ->limit(10)
-            ->get();
+        $playlists = \App\Models\Playlist::where(function ($q) use ($query, $words) {
+            $q->where('name', 'LIKE', "%{$query}%");
+            foreach ($words as $w) {
+                $q->orWhere('name', 'LIKE', "%{$w}%");
+            }
+        })->where('is_public', true)->limit(10)->get();
 
         // Podcasts
-        $podcasts = \App\Models\Podcast::where('title', 'LIKE', "%{$query}%")
-            ->limit(10)
-            ->get();
+        $podcasts = \App\Models\Podcast::where(function ($q) use ($query, $words) {
+            $q->where('title', 'LIKE', "%{$query}%");
+            foreach ($words as $w) {
+                $q->orWhere('title', 'LIKE', "%{$w}%");
+            }
+        })->limit(10)->get();
 
         // Genres
-        $genres = \App\Models\Genre::where('name', 'LIKE', "%{$query}%")
-            ->limit(10)
-            ->get();
+        $genres = \App\Models\Genre::where(function ($q) use ($query, $words) {
+            $q->where('name', 'LIKE', "%{$query}%");
+            foreach ($words as $w) {
+                $q->orWhere('name', 'LIKE', "%{$w}%");
+            }
+        })->limit(10)->get();
 
         return response()->json([
             'query_type' => 'default',
@@ -99,6 +166,55 @@ class SearchController extends Controller
             'songs' => SongResource::collection($aiResult['songs']),
             'total' => $aiResult['total'],
         ]);
+    }
+
+    /**
+     * AI Playlist: buat playlist otomatis berdasarkan deskripsi/mood menggunakan AI.
+     * Limit: 3x per hari per user.
+     */
+    public function aiPlaylist(Request $request)
+    {
+        $request->validate([
+            'prompt' => 'required|string|min:2|max:200',
+        ]);
+
+        $userId = $request->user()->id;
+        $prompt = $request->input('prompt');
+
+        // Cek limit harian (3x per hari)
+        $usage = $this->searchService->getRemainingUsage($userId);
+        if ($usage['remaining'] <= 0) {
+            return response()->json([
+                'message' => 'Kamu sudah mencapai batas pembuatan AI playlist hari ini (3x/hari).',
+                'usage' => $usage,
+            ], 429);
+        }
+
+        // Validasi prompt
+        $validation = $this->searchService->validatePrompt($prompt);
+        if (!($validation['valid'] ?? true)) {
+            return response()->json([
+                'message' => $validation['reason'] ?? 'Prompt tidak valid untuk pembuatan playlist.',
+                'examples' => $validation['examples'] ?? [],
+            ], 422);
+        }
+
+        // Generate playlist
+        $result = $this->searchService->generatePlaylistFromPrompt($userId, $prompt);
+
+        if ($result['type'] === 'error') {
+            return response()->json([
+                'message' => $result['message'],
+            ], 404);
+        }
+
+        return response()->json([
+            'message' => 'Playlist berhasil dibuat!',
+            'playlist' => $result['playlist'],
+            'matched_count' => $result['matched_count'],
+            'missing_songs' => $result['missing_songs'] ?? [],
+            'usage' => $this->searchService->getRemainingUsage($userId),
+        ], 201);
     }
 
 }

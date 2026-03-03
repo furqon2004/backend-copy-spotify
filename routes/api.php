@@ -63,6 +63,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Search
     Route::get('/search', [SearchController::class , 'index']);
     Route::get('/search/ai', [SearchController::class , 'aiSearch']);
+    Route::post('/search/ai-playlist', [SearchController::class , 'aiPlaylist']);
 
     // Genres
     Route::prefix('genres')->group(function () {
