@@ -18,7 +18,7 @@ class SearchService
      */
     public function hasReachedDailyLimit(string $userId): bool
     {
-        return AiPlaylistUsage::hasUsedToday($userId);
+        return AiPlaylistUsage::hasReachedDailyLimit($userId);
     }
 
     /**
@@ -26,11 +26,12 @@ class SearchService
      */
     public function getRemainingUsage(string $userId): array
     {
-        $usedToday = AiPlaylistUsage::hasUsedToday($userId);
+        $usedToday = AiPlaylistUsage::countToday($userId);
+        $limit = AiPlaylistUsage::DAILY_LIMIT;
 
         return [
-            'remaining' => $usedToday ? 0 : 1,
-            'limit' => 1,
+            'remaining' => $limit - $usedToday,
+            'limit' => $limit,
             'used_today' => $usedToday,
             'next_reset_at' => now()->addDay()->startOfDay()->toIso8601String(),
         ];

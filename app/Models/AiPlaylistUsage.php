@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class AiPlaylistUsage extends Model
 {
+    const DAILY_LIMIT = 3;
     protected $fillable = [
         'user_id',
         'prompt',
@@ -22,13 +23,21 @@ class AiPlaylistUsage extends Model
     }
 
     /**
-     * Check if user has already used AI playlist today.
+     * Count how many times user has used AI playlist today.
      */
-    public static function hasUsedToday(string $userId): bool
+    public static function countToday(string $userId): int
     {
         return self::where('user_id', $userId)
             ->where('used_date', now()->toDateString())
-            ->exists();
+            ->count();
+    }
+
+    /**
+     * Check if user has reached the daily AI playlist limit.
+     */
+    public static function hasReachedDailyLimit(string $userId): bool
+    {
+        return self::countToday($userId) >= self::DAILY_LIMIT;
     }
 
     /**

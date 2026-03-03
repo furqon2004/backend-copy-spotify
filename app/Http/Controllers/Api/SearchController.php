@@ -101,4 +101,53 @@ class SearchController extends Controller
         ]);
     }
 
+    /**
+     * AI Playlist: buat playlist otomatis berdasarkan deskripsi/mood menggunakan AI.
+     * Limit: 3x per hari per user.
+     */
+    public function aiPlaylist(Request $request)
+    {
+        $request->validate([
+            'prompt' => 'required|string|min:2|max:200',
+        ]);
+
+        $userId = $request->user()->id;
+        $prompt = $request->input('prompt');
+
+        // Cek limit harian (3x per hari)
+        $usage = $this->searchService->getRemainingUsage($userId);
+        if ($usage['remaining'] <= 0) {
+            return response()->json([
+                'message' => 'Kamu sudah mencapai batas pembuatan AI playlist hari ini (3x/hari).',
+                'usage' => $usage,
+            ], 429);
+        }
+
+        // Validasi prompt
+        $validation = $this->searchService->validatePrompt($prompt);
+        if (!($validation['valid'] ?? true)) {
+            return response()->json([
+                'message' => $validation['reason'] ?? 'Prompt tidak valid untuk pembuatan playlist.',
+                'examples' => $validation['examples'] ?? [],
+            ], 422);
+        }
+
+        // Generate playlist
+        $result = $this->searchService->generatePlaylistFromPrompt($userId, $prompt);
+
+        if ($result['type'] === 'error') {
+            return response()->json([
+                'message' => $result['message'],
+            ], 404);
+        }
+
+        return response()->json([
+            'message' => 'Playlist berhasil dibuat!',
+            'playlist' => $result['playlist'],
+            'matched_count' => $result['matched_count'],
+            'missing_songs' => $result['missing_songs'] ?? [],
+            'usage' => $this->searchService->getRemainingUsage($userId),
+        ], 201);
+    }
+
 }
