@@ -383,6 +383,147 @@ class DatabaseSeeder extends Seeder
         foreach (array_chunk($streamInsert, 500) as $chunk) {
             StreamHistory::insert($chunk);
         }
+
+        // ─── Podcast Artists ──────────────────────────────────────────────
+        $podcastArtistsRaw = [
+            'Sule', 'Pandji Pragiwaksono', 'Felix Siauw', 'Gofar Hilman',
+            'Ustadz Jojo', 'Praz Teguh', 'Abdur Arsyad', 'Coki Pardede', 'Rizky Febian',
+        ];
+
+        $podcastArtistUsersInsert = [];
+        $podcastArtistsInsert = [];
+        $podcastArtistMap = [];
+
+        foreach ($podcastArtistsRaw as $name) {
+            $userId = Str::uuid()->toString();
+            $artistId = Str::uuid()->toString();
+            $slug = Str::slug($name);
+
+            $podcastArtistUsersInsert[] = [
+                'id' => $userId,
+                'email' => $slug . '@spotify.com',
+                'username' => $slug,
+                'password_hash' => $password,
+                'full_name' => $name,
+                'is_active' => true,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+
+            $podcastArtistsInsert[] = [
+                'id' => $artistId,
+                'user_id' => $userId,
+                'name' => $name,
+                'slug' => $slug,
+                'bio' => 'Podcaster & public figure — ' . $name,
+                'avatar_url' => 'https://picsum.photos/seed/' . $slug . '/300/300',
+                'monthly_listeners' => rand(500000, 3000000),
+                'is_verified' => true,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+
+            $podcastArtistMap[$name] = $artistId;
+        }
+
+        User::insert($podcastArtistUsersInsert);
+        Artist::insert($podcastArtistsInsert);
+
+        // ─── Podcasts ─────────────────────────────────────────────────────
+        $pwkPodcastId = Str::uuid()->toString();
+        $kejarSetoranId = Str::uuid()->toString();
+
+        Podcast::insert([
+            [
+                'id' => $pwkPodcastId,
+                'artist_id' => $podcastArtistMap['Pandji Pragiwaksono'],
+                'title' => 'PWK (Pernah Waktu Kecil)',
+                'description' => 'Podcast PWK menghadirkan bintang tamu selebriti dan public figure Indonesia dalam obrolan seru, lucu, dan penuh cerita hidup.',
+                'cover_image_url' => 'https://picsum.photos/seed/pwk-podcast/300/300',
+                'category' => 'Comedy',
+                'is_completed' => false,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ],
+            [
+                'id' => $kejarSetoranId,
+                'artist_id' => $podcastArtistMap['Praz Teguh'],
+                'title' => 'Kejar Setoran',
+                'description' => 'Podcast komedi stand-up dengan para komika Indonesia membahas pengalaman hidup yang kocak dan relatable.',
+                'cover_image_url' => 'https://picsum.photos/seed/kejar-setoran/300/300',
+                'category' => 'Comedy',
+                'is_completed' => false,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ],
+        ]);
+
+        // ─── Podcast Episodes ─────────────────────────────────────────────
+        PodcastEpisode::insert([
+            // PWK Episodes
+            [
+                'id' => Str::uuid()->toString(),
+                'podcast_id' => $pwkPodcastId,
+                'title' => 'DIKASIH MOBIL SAMA RIZKY FEBIAN SULE MALAH HARUS NYICIL',
+                'description' => 'Sule curhat soal hadiah mobil dari Rizky Febian yang ternyata harus dicicil. Obrolan seru bareng Sule & Rizky Febian di PWK!',
+                'audio_url' => 'https://res.cloudinary.com/dkqwi4lk9/video/upload/v1772700410/PWK_DIKASIH_MOBIL_SAMA_RIZKY_FEBIAN_SULE_MALAH_HARUS_NYICIL___LQgIdvOy38E_qpkajk.mp3',
+                'duration_ms' => 3720000,
+                'stream_count' => rand(800000, 2500000),
+                'release_date' => $now->copy()->subDays(14),
+                'created_at' => $now,
+                'updated_at' => $now,
+            ],
+            [
+                'id' => Str::uuid()->toString(),
+                'podcast_id' => $pwkPodcastId,
+                'title' => 'PERNAH DI ROASTING PANDJI USTAD FELIX SIAUW SEKARANG MALAH BIKIN KONTEN BARENG',
+                'description' => 'Ustadz Felix Siauw cerita soal pernah di-roasting Pandji dan sekarang justru berkolaborasi bikin konten bareng.',
+                'audio_url' => 'https://res.cloudinary.com/dkqwi4lk9/video/upload/v1772700409/PWK_PERNAH_DI_ROASTING_PANDJI_USTAD_FELIX_SIAUW_SEKARANG_MALAH_BIKIN_KONTEN_BARENG___n3vLnBLrsXs_ctqjqq.mp3',
+                'duration_ms' => 4200000,
+                'stream_count' => rand(600000, 2000000),
+                'release_date' => $now->copy()->subDays(21),
+                'created_at' => $now,
+                'updated_at' => $now,
+            ],
+            [
+                'id' => Str::uuid()->toString(),
+                'podcast_id' => $pwkPodcastId,
+                'title' => 'GARA-GARA NGONTEN BARENG GOFAR JADWAL CERAMAH USTADZ JOJO JADI PADAT TERUS',
+                'description' => 'Ustadz Jojo cerita bagaimana konten bareng Gofar Hilman bikin jadwal ceramahnya jadi padat. Obrolan seru di PWK!',
+                'audio_url' => 'https://res.cloudinary.com/dkqwi4lk9/video/upload/v1772700398/PWK_GARA-GARA_NGONTEN_BARENG_GOFAR_JADWAL_CERAMAH_USTADZ_JOJO_JADI_PADAT_TERUS___D8S7d9g8hjA_daporg.mp3',
+                'duration_ms' => 3900000,
+                'stream_count' => rand(700000, 1800000),
+                'release_date' => $now->copy()->subDays(28),
+                'created_at' => $now,
+                'updated_at' => $now,
+            ],
+
+            // Kejar Setoran Episodes
+            [
+                'id' => Str::uuid()->toString(),
+                'podcast_id' => $kejarSetoranId,
+                'title' => 'PRAZ TEGUH DAN ABDUR ARSYAD SAMA-SAMA PERNAH DIKECEWAKAN ORANG BARU',
+                'description' => 'Praz Teguh dan Abdur Arsyad berbagi cerita soal pengalaman dikecewakan oleh orang baru di kehidupan mereka.',
+                'audio_url' => 'https://res.cloudinary.com/dkqwi4lk9/video/upload/v1772700406/TITIK_KUMPUL_-_PRAZ_TEGUH_DAN_ABDUR_ARSYAD_SAMA-SAMA_PERNAH_DIKECEWAKAN_ORANG_BARU__qBxbDAWTaR0_xixy5v.mp3',
+                'duration_ms' => 3300000,
+                'stream_count' => rand(500000, 1500000),
+                'release_date' => $now->copy()->subDays(7),
+                'created_at' => $now,
+                'updated_at' => $now,
+            ],
+            [
+                'id' => Str::uuid()->toString(),
+                'podcast_id' => $kejarSetoranId,
+                'title' => 'COKI MAKIN ANDAL DALAM MENYAPU OMONGANNYA',
+                'description' => 'Coki Pardede makin jago menyapu omongannya sendiri! Obrolan penuh tawa di Kejar Setoran.',
+                'audio_url' => 'https://res.cloudinary.com/dkqwi4lk9/video/upload/v1772700402/KEJAR_SETORAN_-_COKI_MAKIN_ANDAL_DALAM_MENYAPU_OMONGANNYA___qGT2wERFWOU_uogdqd.mp3',
+                'duration_ms' => 3600000,
+                'stream_count' => rand(600000, 1800000),
+                'release_date' => $now->copy()->subDays(3),
+                'created_at' => $now,
+                'updated_at' => $now,
+            ],
+        ]);
     }
 
     private function generateSyncedLyrics(string $content, int $durationSeconds): array
