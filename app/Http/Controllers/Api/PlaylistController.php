@@ -31,6 +31,7 @@ class PlaylistController extends Controller
     public function show(string $id): JsonResponse
     {
         $playlist = Playlist::with([
+            'user:id,username,full_name',
             'songs' => function ($q) {
                 $q->select([
                     'songs.id',
@@ -39,6 +40,7 @@ class PlaylistController extends Controller
                     'songs.duration_seconds',
                     'songs.artist_id',
                     'songs.album_id',
+                    'songs.file_path', // Added file_path so audio player works for non-owners too!
                     'playlist_items.id as playlist_item_id', // Select pivot ID
                     'playlist_items.position'
                 ])
@@ -46,6 +48,8 @@ class PlaylistController extends Controller
                     ->orderBy('playlist_items.position');
             }
         ])->findOrFail($id);
+
+        $playlist->owner = $playlist->user ? ($playlist->user->full_name ?? $playlist->user->username) : 'Unknown User';
 
         // If playlist is private, only the owner can view it
         if (!$playlist->is_public) {
@@ -127,11 +131,14 @@ class PlaylistController extends Controller
             'description' => 'nullable|string',
             'cover_url' => 'nullable|string|max:2048',
             'ai_prompt_used' => 'nullable|string',
+            'is_public' => 'boolean'
         ]);
 
         $playlist = Playlist::create(array_merge($data, [
             'user_id' => auth()->id(),
-            'is_ai_generated' => false
+            'is_ai_generated' => false,
+            // default to true if is_public is not provided, matching the DB migration
+            'is_public' => $request->has('is_public') ? $request->boolean('is_public') : true,
         ]));
 
         return response()->json($playlist, 201);
