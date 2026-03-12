@@ -309,7 +309,7 @@ class DatabaseSeeder extends Seeder
             ];
         }
 
-        // Playlist 2 - Top Hits Indo
+        // Playlist 2 - Top Hits Indo (hanya artis Indonesia)
         $playlistId2 = Str::uuid()->toString();
         $playlistsInsert[] = [
             'id' => $playlistId2,
@@ -322,7 +322,21 @@ class DatabaseSeeder extends Seeder
             'updated_at' => $now,
         ];
 
-        foreach (array_slice($songIds, 10, 10) as $idx => $sId) {
+        // Filter hanya lagu dari artis Indonesia
+        $indonesianArtists = [
+            'Hindia', 'Kunto Aji', 'for Revenge', 'Kaleb J', 'Kahitna ft Monita',
+            'Glenn Fredly', 'Chrisye', 'Dewa', 'PMVATT', 'Bernadya',
+            'Sal Priadi', 'Nadin Amizah', 'Barasuara', 'Mahalini',
+        ];
+
+        $indonesianSongIds = [];
+        foreach ($songsRaw as $idx => $s) {
+            if (in_array($s[0], $indonesianArtists)) {
+                $indonesianSongIds[] = $songIds[$idx];
+            }
+        }
+
+        foreach (array_slice($indonesianSongIds, 0, 15) as $idx => $sId) {
             $playlistItemsInsert[] = [
                 'id' => Str::uuid()->toString(),
                 'playlist_id' => $playlistId2,
